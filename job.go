@@ -1,12 +1,7 @@
 package workers
 
-type workerJob interface {
-	Perform(interface{}) bool
-}
+type jobFunc func(message interface{}) bool
 
-type Job struct {
-}
-
-func (*Job) Perform(message interface{}) bool {
+func Job(message interface{}) bool {
 	return true
 }

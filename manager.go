@@ -3,7 +3,7 @@ package workers
 type manager struct {
 	queue       string
 	fetch       fetcher
-	job         workerJob
+	job         jobFunc
 	concurrency int
 	messages    chan interface{}
 }
@@ -33,7 +33,7 @@ func (m *manager) manage(c chan string) {
 	logger.Println("quitting manager")
 }
 
-func newManager(queue string, job workerJob, concurrency int) *manager {
+func newManager(queue string, job jobFunc, concurrency int) *manager {
 	m := &manager{
 		queue,
 		nil,

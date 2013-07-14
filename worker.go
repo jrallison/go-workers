@@ -9,7 +9,7 @@ func (w *worker) work(messages chan interface{}) {
 
 	for message := range messages {
 		logger.Println("performing job with: ", message)
-		w.manager.job.Perform(message)
+		w.manager.job(message)
 	}
 }
 

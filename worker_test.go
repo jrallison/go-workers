@@ -7,17 +7,13 @@ import (
 
 var processed = make([]string, 0)
 
-type WorkerTestJob struct {
-	Job
-}
-
-func (j *WorkerTestJob) Perform(message interface{}) bool {
+func WorkerTestJob(message interface{}) bool {
 	processed = append(processed, message.(string))
 	return true
 }
 
 func WorkerSpec(c gospec.Context) {
-	manager := newManager("myqueue", &WorkerTestJob{}, 1)
+	manager := newManager("myqueue", WorkerTestJob, 1)
 
 	c.Specify("newWorker", func() {
 		c.Specify("it returns an instance of worker with connection to manager", func() {

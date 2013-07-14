@@ -10,17 +10,13 @@ Example usage:
     	"github.com/jrallison/go-workers"
     )
     
-    type MyJob struct {
-    	workers.Job
-    }
-    
-    func (*MyJob) Perform(message *interface{}) bool {
+    func MyJob(message interface{}) bool {
       // do something with your message
-    	return true
+      return true
     }
     
     func main() {
-    	workers.Process("myqueue", &MyJob{}, 10)
-    	workers.Process("myqueue2", &MyJob{}, 10)
+    	workers.Process("myqueue", MyJob, 10)
+    	workers.Process("myqueue2", MyJob, 10)
     	workers.Run()
     }
