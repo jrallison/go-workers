@@ -4,7 +4,7 @@ type worker struct {
 	manager *manager
 }
 
-func (w *worker) work(messages chan *interface{}) {
+func (w *worker) work(messages chan interface{}) {
 	logger.Println("starting work for: ", w.manager.queue)
 
 	for message := range messages {

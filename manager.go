@@ -5,7 +5,7 @@ type manager struct {
 	fetch       fetcher
 	job         workerJob
 	concurrency int
-	messages    chan *interface{}
+	messages    chan interface{}
 }
 
 func (m *manager) manage(c chan string) {
@@ -34,15 +34,15 @@ func (m *manager) manage(c chan string) {
 }
 
 func newManager(queue string, job workerJob, concurrency int) *manager {
-	m := manager{
+	m := &manager{
 		queue,
 		nil,
 		job,
 		concurrency,
-		make(chan *interface{}),
+		make(chan interface{}),
 	}
 
-	m.fetch = newFetch(&m)
+	m.fetch = newFetch(m)
 
-	return &m
+	return m
 }

@@ -6,10 +6,9 @@ import (
 	"sync"
 )
 
-var control = make(map[string]chan string)
 var processing sync.WaitGroup
 var managers = make(map[string]*manager)
-
+var control = make(map[string]chan string)
 var logger = log.New(os.Stdout, "background: ", log.Ldate|log.Lmicroseconds)
 
 func Process(queue string, job workerJob, concurrency int) {
@@ -25,16 +24,4 @@ func Process(queue string, job workerJob, concurrency int) {
 
 func Run() {
 	processing.Wait()
-}
-
-func PrepareForExit() {
-	for _, c := range control {
-		c <- "prepare"
-	}
-}
-
-func Quit() {
-	for _, c := range control {
-		c <- "quit"
-	}
 }

@@ -7,12 +7,12 @@ import (
 type fetcher interface {
 	Fetch()
 	Acknowledge(*interface{})
-	Messages() chan *interface{}
+	Messages() chan *string
 }
 
 type Fetch struct {
 	manager  *manager
-	messages chan *interface{}
+	messages chan *string
 	conn     redis.Conn
 }
 
@@ -20,22 +20,19 @@ func (f *Fetch) Fetch() {
 	logger.Println("starting to pull from redis queue")
 
 	for {
-		message, err := f.conn.Do("brpop", f.manager.queue, 1)
+		message, err := redis.Strings(f.conn.Do("brpop", f.manager.queue, 1))
+
 		if err != nil {
 			logger.Println("ERR: ", err)
-		}
-
-		if message == nil {
-			logger.Println("no message found. refetching...")
 		} else {
 			logger.Println("pulled message: ", message)
-			f.messages <- &message
+			f.messages <- &message[1]
 		}
 
 	}
 }
 
-func (f *Fetch) Messages() chan *interface{} {
+func (f *Fetch) Messages() chan *string {
 	return f.messages
 }
 
@@ -52,7 +49,7 @@ func newFetch(m *manager) fetcher {
 
 	return &Fetch{
 		m,
-		make(chan *interface{}),
+		make(chan *string),
 		conn,
 	}
 }
