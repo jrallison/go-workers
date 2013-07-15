@@ -16,6 +16,12 @@ Example usage:
     }
     
     func main() {
+      workers.Configure(map[string]string{
+        "server":  "localhost:6400",
+        "pool":    "20",
+        "process": "1",
+      })
+
     	workers.Process("myqueue", myJob, 10)
     	workers.Process("myqueue2", myJob, 10)
     	workers.Run()
