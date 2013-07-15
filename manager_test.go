@@ -33,23 +33,24 @@ func ManagerSpec(c gospec.Context) {
 	})
 
 	c.Specify("manage", func() {
-		// Load test instance of redis on port 6400
-		conn, _ := redis.Dial("tcp", "localhost:6400")
+		conn := Config.pool.Get()
+		defer conn.Close()
 
 		c.Specify("coordinates processing of queue messages", func() {
 			manager := newManager("manager1", testJob, 10)
-			manager.start()
 
 			conn.Do("lpush", "manager1", "test")
 			conn.Do("lpush", "manager1", "test2")
 
+			manager.start()
+
 			c.Expect(<-processed, Equals, "test")
 			c.Expect(<-processed, Equals, "test2")
 
+			manager.quit()
+
 			len, _ := redis.Int(conn.Do("llen", "manager1"))
 			c.Expect(len, Equals, 0)
-
-			manager.quit()
 		})
 
 		c.Specify("prepare stops fetching new messages from queue", func() {

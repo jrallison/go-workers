@@ -41,7 +41,7 @@ func (m *manager) quit() {
 }
 
 func (m *manager) manage() {
-	logger.Println("managing queue: ", m.queue)
+	logger.Println("starting to manage: ", m.queue)
 
 	m.loadWorkers()
 	go m.fetch.Fetch()
@@ -49,7 +49,6 @@ func (m *manager) manage() {
 	for {
 		select {
 		case message := <-m.confirm:
-			logger.Println("completed message: ", message)
 			m.fetch.Acknowledge(message)
 		case <-m.stop:
 			m.exit <- true

@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -15,15 +16,12 @@ type Fetcher interface {
 type fetch struct {
 	manager  *manager
 	messages chan string
-	conn     redis.Conn
 	stop     chan bool
 	exit     chan bool
 	closed   bool
 }
 
 func (f *fetch) Fetch() {
-	logger.Println("starting to pull from redis queue")
-
 	messages := make(chan string)
 
 	go (func(c chan string) {
@@ -32,13 +30,15 @@ func (f *fetch) Fetch() {
 				break
 			}
 
-			message, err := redis.Strings(f.conn.Do("brpop", f.manager.queue, 1))
+			conn := Config.pool.Get()
+			defer conn.Close()
+
+			message, err := redis.String(conn.Do("brpoplpush", f.manager.queue, f.inprogressQueue(), 1))
 
 			if err != nil {
 				logger.Println("ERR: ", err, f)
 			} else {
-				logger.Println("sending message: ", message)
-				c <- message[1]
+				c <- message
 			}
 		}
 	})(messages)
@@ -46,7 +46,6 @@ func (f *fetch) Fetch() {
 	for {
 		select {
 		case message := <-messages:
-			logger.Println("pulled message: ", message)
 			f.Messages() <- message
 		case <-f.stop:
 			f.closed = true
@@ -56,8 +55,10 @@ func (f *fetch) Fetch() {
 	}
 }
 
-func (f *fetch) Acknowledge(string) {
-	// noop
+func (f *fetch) Acknowledge(message string) {
+	conn := Config.pool.Get()
+	defer conn.Close()
+	conn.Do("lrem", f.inprogressQueue(), -1, message)
 }
 
 func (f *fetch) Messages() chan string {
@@ -73,17 +74,14 @@ func (f *fetch) Closed() bool {
 	return f.closed
 }
 
+func (f *fetch) inprogressQueue() string {
+	return fmt.Sprint(f.manager.queue, ":", Config.processId, ":inprogress")
+}
+
 func newFetch(m *manager) Fetcher {
-	conn, err := redis.Dial("tcp", "localhost:6400")
-
-	if err != nil {
-		logger.Println("ERR: couldn't connect to redis. ", err)
-	}
-
 	return &fetch{
 		m,
 		make(chan string),
-		conn,
 		make(chan bool),
 		make(chan bool),
 		false,

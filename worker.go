@@ -19,7 +19,6 @@ func (w *worker) work(messages chan string) {
 	for {
 		select {
 		case message := <-messages:
-			logger.Println("performing job with: ", message)
 			w.manager.job(message)
 			w.manager.confirm <- message
 		case <-w.stop:

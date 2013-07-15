@@ -2,7 +2,6 @@ package workers
 
 import (
 	"github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
 	"testing"
 )
 
@@ -19,11 +18,19 @@ func TestAllSpecs(t *testing.T) {
 
 	r.BeforeEach = func() {
 		// Load test instance of redis on port 6400
-		conn, _ := redis.Dial("tcp", "localhost:6400")
+		Configure(map[string]string{
+			"server":  "localhost:6400",
+			"process": "1",
+			"pool":    "1",
+		})
+
+		conn := Config.pool.Get()
 		conn.Do("flushdb")
+		conn.Close()
 	}
 
 	// List all specs here
+	r.AddSpec(ConfigSpec)
 	r.AddSpec(FetchSpec)
 	r.AddSpec(WorkerSpec)
 	r.AddSpec(ManagerSpec)
