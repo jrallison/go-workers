@@ -77,5 +77,29 @@ func FetchSpec(c gospec.Context) {
 
 			fetch.Close()
 		})
+
+		c.Specify("refires any messages left in progress from prior instance", func() {
+			conn := Config.pool.Get()
+			defer conn.Close()
+
+			conn.Do("lpush", "fetchQueue5:1:inprogress", "test")
+			conn.Do("lpush", "fetchQueue5:1:inprogress", "test2")
+			conn.Do("lpush", "fetchQueue5", "test3")
+
+			fetch, _ := buildFetcher("fetchQueue5")
+
+			c.Expect(<-fetch.Messages(), Equals, "test2")
+			c.Expect(<-fetch.Messages(), Equals, "test")
+			c.Expect(<-fetch.Messages(), Equals, "test3")
+
+			fetch.Acknowledge("test")
+			fetch.Acknowledge("test2")
+			fetch.Acknowledge("test3")
+
+			len, _ := redis.Int(conn.Do("llen", "fetchQueue5:1:inprogress"))
+			c.Expect(len, Equals, 0)
+
+			fetch.Close()
+		})
 	})
 }

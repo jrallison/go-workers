@@ -16,14 +16,14 @@ func TestAllSpecs(t *testing.T) {
 
 	r.Parallel = false
 
-	r.BeforeEach = func() {
-		// Load test instance of redis on port 6400
-		Configure(map[string]string{
-			"server":  "localhost:6400",
-			"process": "1",
-			"pool":    "1",
-		})
+	// Load test instance of redis on port 6400
+	Configure(map[string]string{
+		"server":  "localhost:6400",
+		"process": "1",
+		"pool":    "1",
+	})
 
+	r.BeforeEach = func() {
 		conn := Config.pool.Get()
 		conn.Do("flushdb")
 		conn.Close()

@@ -24,6 +24,8 @@ type fetch struct {
 func (f *fetch) Fetch() {
 	messages := make(chan string)
 
+	f.processOldMessages()
+
 	go (func(c chan string) {
 		for {
 			if f.Closed() {
@@ -72,6 +74,28 @@ func (f *fetch) Close() {
 
 func (f *fetch) Closed() bool {
 	return f.closed
+}
+
+func (f *fetch) processOldMessages() {
+	oldMessages := f.inprogressMessages()
+
+	if len(oldMessages) > 0 {
+		for _, m := range oldMessages {
+			f.Messages() <- m
+		}
+	}
+}
+
+func (f *fetch) inprogressMessages() []string {
+	conn := Config.pool.Get()
+	defer conn.Close()
+
+	messages, err := redis.Strings(conn.Do("lrange", f.inprogressQueue(), 0, -1))
+	if err != nil {
+		logger.Println("ERR: ", err, f)
+	}
+
+	return messages
 }
 
 func (f *fetch) inprogressQueue() string {
