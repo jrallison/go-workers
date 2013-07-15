@@ -5,15 +5,15 @@ import (
 	. "github.com/customerio/gospec"
 )
 
-var processed = make([]string, 0)
-
-func WorkerTestJob(message interface{}) bool {
-	processed = append(processed, message.(string))
-	return true
-}
-
 func WorkerSpec(c gospec.Context) {
-	manager := newManager("myqueue", WorkerTestJob, 1)
+	var processed = make([]string, 0)
+
+	var testJob = (func(message interface{}) bool {
+		processed = append(processed, message.(string))
+		return true
+	})
+
+	manager := newManager("myqueue", testJob, 1)
 
 	c.Specify("newWorker", func() {
 		c.Specify("it returns an instance of worker with connection to manager", func() {
@@ -26,14 +26,28 @@ func WorkerSpec(c gospec.Context) {
 		worker := newWorker(manager)
 
 		c.Specify("gives each message to a new job instance, and calls perform", func() {
-			messages := make(chan interface{})
+			messages := make(chan string)
 
 			go worker.work(messages)
 
 			messages <- "test"
 
 			c.Expect(len(processed), Equals, 1)
-			c.Expect(processed[0], Equals, "test")
+			c.Expect(processed, Contains, "test")
+
+			close(messages)
+		})
+
+		c.Specify("confirms job completed", func() {
+			messages := make(chan string)
+
+			go worker.work(messages)
+
+			messages <- "test"
+
+			c.Expect(<-manager.confirm, Equals, "test")
+
+			close(messages)
 		})
 	})
 }

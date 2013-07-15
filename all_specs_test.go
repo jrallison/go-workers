@@ -26,6 +26,7 @@ func TestAllSpecs(t *testing.T) {
 	// List all specs here
 	r.AddSpec(FetchSpec)
 	r.AddSpec(WorkerSpec)
+	r.AddSpec(ManagerSpec)
 
 	// Run GoSpec and report any errors to gotest's `testing.T` instance
 	gospec.MainGoTest(r, t)

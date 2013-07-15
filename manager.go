@@ -1,36 +1,68 @@
 package workers
 
+import (
+	"sync"
+)
+
 type manager struct {
 	queue       string
-	fetch       fetcher
+	fetch       Fetcher
 	job         jobFunc
 	concurrency int
-	messages    chan interface{}
+	workers     []*worker
+	confirm     chan string
+	stop        chan bool
+	exit        chan bool
+	*sync.WaitGroup
 }
 
-func (m *manager) manage(c chan string) {
-	logger.Println("managing queue: ", m.queue)
+func (m *manager) start() {
+	m.Add(1)
+	go m.manage()
+}
 
-	for i := 0; i < m.concurrency; i++ {
-		go newWorker(m).work(m.messages)
+func (m *manager) prepare() {
+	if !m.fetch.Closed() {
+		m.fetch.Close()
+	}
+}
+
+func (m *manager) quit() {
+	m.prepare()
+
+	for _, worker := range m.workers {
+		worker.quit()
 	}
 
+	m.stop <- true
+	<-m.exit
+
+	m.Done()
+}
+
+func (m *manager) manage() {
+	logger.Println("managing queue: ", m.queue)
+
+	m.loadWorkers()
 	go m.fetch.Fetch()
 
 	for {
-		logger.Println("selecting")
 		select {
-		case message := <-m.fetch.Messages():
-			logger.Println("fetched message: ", message)
-			m.messages <- message
-		case control := <-c:
-			logger.Println("received control: ", control)
-			// stop fetching from redis if told to prepare
-			// close messages channel if told to quit
+		case message := <-m.confirm:
+			logger.Println("completed message: ", message)
+			m.fetch.Acknowledge(message)
+		case <-m.stop:
+			m.exit <- true
+			break
 		}
 	}
+}
 
-	logger.Println("quitting manager")
+func (m *manager) loadWorkers() {
+	for i := 0; i < m.concurrency; i++ {
+		m.workers[i] = newWorker(m)
+		m.workers[i].start()
+	}
 }
 
 func newManager(queue string, job jobFunc, concurrency int) *manager {
@@ -39,7 +71,11 @@ func newManager(queue string, job jobFunc, concurrency int) *manager {
 		nil,
 		job,
 		concurrency,
-		make(chan interface{}),
+		make([]*worker, concurrency),
+		make(chan string),
+		make(chan bool),
+		make(chan bool),
+		&sync.WaitGroup{},
 	}
 
 	m.fetch = newFetch(m)

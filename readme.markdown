@@ -10,13 +10,13 @@ Example usage:
     	"github.com/jrallison/go-workers"
     )
     
-    func MyJob(message interface{}) bool {
+    func myJob(message interface{}) bool {
       // do something with your message
       return true
     }
     
     func main() {
-    	workers.Process("myqueue", MyJob, 10)
-    	workers.Process("myqueue2", MyJob, 10)
+    	workers.Process("myqueue", myJob, 10)
+    	workers.Process("myqueue2", myJob, 10)
     	workers.Run()
     }
