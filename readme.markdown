@@ -20,3 +20,12 @@ Example usage:
     	workers.Process("myqueue2", myJob, 10)
     	workers.Run()
     }
+
+
+TODO:
+
+* retries
+* sync message format with resque/sidekiq
+* improve logging / error handling
+* listen for signals to stop processing
+* expose status / metrics
