@@ -44,6 +44,7 @@ func (m *manager) manage() {
 	logger.Println("starting to manage: ", m.queue)
 
 	m.loadWorkers()
+
 	go m.fetch.Fetch()
 
 	for {
