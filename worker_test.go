@@ -5,8 +5,18 @@ import (
 	. "github.com/customerio/gospec"
 )
 
+var middlewareCalled bool
+
+type testMiddleware struct{}
+
+func (l *testMiddleware) Call(queue string, message interface{}, next func()) {
+	middlewareCalled = true
+	next()
+}
+
 func WorkerSpec(c gospec.Context) {
 	var processed = make([]string, 0)
+	middlewareCalled = false
 
 	var testJob = (func(message interface{}) bool {
 		processed = append(processed, message.(string))
@@ -27,9 +37,7 @@ func WorkerSpec(c gospec.Context) {
 
 		c.Specify("gives each message to a new job instance, and calls perform", func() {
 			messages := make(chan string)
-
 			go worker.work(messages)
-
 			messages <- "test"
 
 			c.Expect(len(processed), Equals, 1)
@@ -40,12 +48,22 @@ func WorkerSpec(c gospec.Context) {
 
 		c.Specify("confirms job completed", func() {
 			messages := make(chan string)
-
 			go worker.work(messages)
-
 			messages <- "test"
 
 			c.Expect(<-manager.confirm, Equals, "test")
+
+			close(messages)
+		})
+
+		c.Specify("runs defined middleware", func() {
+			Middleware.Append(&testMiddleware{})
+
+			messages := make(chan string)
+			go worker.work(messages)
+			messages <- "test"
+
+			c.Expect(middlewareCalled, IsTrue)
 
 			close(messages)
 		})

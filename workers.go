@@ -10,7 +10,7 @@ var managers = make(map[string]*manager)
 var control = make(map[string]chan string)
 var logger = log.New(os.Stdout, "background: ", log.Ldate|log.Lmicroseconds)
 
-var chain = newMiddleware(&middlewares.Logging{})
+var Middleware = newMiddleware(&middlewares.Logging{})
 
 func Process(queue string, job jobFunc, concurrency int) {
 	managers[queue] = newManager(queue, job, concurrency)

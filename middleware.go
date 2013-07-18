@@ -20,16 +20,16 @@ func (m *middleware) Prepend(action Action) {
 }
 
 func (m *middleware) call(queue string, message interface{}, final func()) {
-	newContinuation(m.actions, queue, message, final)()
+	continuation(m.actions, queue, message, final)()
 }
 
-func newContinuation(actions []Action, queue string, message interface{}, final func()) func() {
+func continuation(actions []Action, queue string, message interface{}, final func()) func() {
 	return func() {
 		if len(actions) > 0 {
 			actions[0].Call(
 				queue,
 				message,
-				newContinuation(actions[1:], queue, message, final),
+				continuation(actions[1:], queue, message, final),
 			)
 		} else {
 			final()

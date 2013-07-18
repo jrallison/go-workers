@@ -19,7 +19,10 @@ func (w *worker) work(messages chan string) {
 	for {
 		select {
 		case message := <-messages:
-			w.manager.job(message)
+			Middleware.call(w.manager.queue, message, func() {
+				w.manager.job(message)
+			})
+
 			w.manager.confirm <- message
 		case <-w.stop:
 			w.exit <- true
