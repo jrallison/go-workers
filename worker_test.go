@@ -34,7 +34,7 @@ func WorkerSpec(c gospec.Context) {
 	c.Specify("work", func() {
 		worker := newWorker(manager)
 		messages := make(chan *Msg)
-		message, _ := NewMsg("{\"foo\":\"bar\",\"args\":[\"foo\",\"bar\"]}")
+		message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"]}")
 
 		c.Specify("calls job with message args", func() {
 			go worker.work(messages)

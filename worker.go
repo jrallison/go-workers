@@ -20,7 +20,7 @@ func (w *worker) work(messages chan *Msg) {
 		select {
 		case message := <-messages:
 			Middleware.call(message, func() {
-				w.safelyRun(message.Args())
+				w.process(message)
 			})
 
 			w.manager.confirm <- message
@@ -31,14 +31,14 @@ func (w *worker) work(messages chan *Msg) {
 	}
 }
 
-func (w *worker) safelyRun(args *Args) {
+func (w *worker) process(message *Msg) {
 	defer func() {
 		if e := recover(); e != nil {
-			logger.Println("FAILED: ", e)
+			logger.Println("jid:", message.Jid(), "FAILED:", e)
 		}
 	}()
 
-	w.manager.job(args)
+	w.manager.job(message.Args())
 }
 
 func newWorker(m *manager) *worker {
