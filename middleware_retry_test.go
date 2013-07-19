@@ -75,9 +75,33 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("handles new failed message", func() {})
-	c.Specify("allows a retry queue", func() {})
 	c.Specify("handles recurring failed message", func() {})
 	c.Specify("handles recurring failed message with customized max", func() {})
-	c.Specify("doesn't retry after default number of retries", func() {})
-	c.Specify("doesn't retry after customized number of retries", func() {})
+	c.Specify("doesn't retry after default number of retries", func() {
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_count\":25}")
+
+		wares.call("myqueue", message, func() {
+			worker.process(message)
+		})
+
+		conn := Config.pool.Get()
+		defer conn.Close()
+
+		count, _ := redis.Int(conn.Do("zcard", "goretry"))
+		c.Expect(count, Equals, 0)
+	})
+
+	c.Specify("doesn't retry after customized number of retries", func() {
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":3,\"retry_count\":3}")
+
+		wares.call("myqueue", message, func() {
+			worker.process(message)
+		})
+
+		conn := Config.pool.Get()
+		defer conn.Close()
+
+		count, _ := redis.Int(conn.Do("zcard", "goretry"))
+		c.Expect(count, Equals, 0)
+	})
 }

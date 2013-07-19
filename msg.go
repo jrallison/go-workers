@@ -21,18 +21,6 @@ func (m *Msg) Jid() string {
 	return m.Get("jid").MustString()
 }
 
-func (m *Msg) Retry() bool {
-	if retry, err := m.Get("retry").Bool(); err == nil {
-		return retry
-	}
-
-	if retry, err := m.Get("retry").Int(); err == nil {
-		return retry > 0
-	}
-
-	return false
-}
-
 func (m *Msg) Args() *Args {
 	if args, ok := m.CheckGet("args"); ok {
 		return &Args{&data{args}}
