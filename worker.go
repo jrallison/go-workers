@@ -19,10 +19,7 @@ func (w *worker) work(messages chan *Msg) {
 	for {
 		select {
 		case message := <-messages:
-			Middleware.call(w.manager.queue, message, func() {
-				w.process(message)
-			})
-
+			w.process(message)
 			w.manager.confirm <- message
 		case <-w.stop:
 			w.exit <- true
@@ -38,7 +35,9 @@ func (w *worker) process(message *Msg) {
 		}
 	}()
 
-	w.manager.job(message.Args())
+	Middleware.call(w.manager.queue, message, func() {
+		w.manager.job(message.Args())
+	})
 }
 
 func newWorker(m *manager) *worker {

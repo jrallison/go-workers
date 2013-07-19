@@ -36,6 +36,7 @@ func TestAllSpecs(t *testing.T) {
 	r.AddSpec(WorkerSpec)
 	r.AddSpec(ManagerSpec)
 	r.AddSpec(MiddlewareSpec)
+	r.AddSpec(MiddlewareRetrySpec)
 
 	// Run GoSpec and report any errors to gotest's `testing.T` instance
 	gospec.MainGoTest(r, t)
