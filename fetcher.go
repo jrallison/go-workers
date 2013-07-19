@@ -7,18 +7,26 @@ import (
 
 type Fetcher interface {
 	Fetch()
-	Acknowledge(string)
-	Messages() chan string
+	Acknowledge(*Msg)
+	Messages() chan *Msg
 	Close()
 	Closed() bool
 }
 
 type fetch struct {
 	manager  *manager
-	messages chan string
+	messages chan *Msg
 	stop     chan bool
 	exit     chan bool
 	closed   bool
+}
+
+func (f *fetch) processOldMessages() {
+	messages := f.inprogressMessages()
+
+	for _, message := range messages {
+		f.sendMessage(message)
+	}
 }
 
 func (f *fetch) Fetch() {
@@ -48,7 +56,7 @@ func (f *fetch) Fetch() {
 	for {
 		select {
 		case message := <-messages:
-			f.Messages() <- message
+			f.sendMessage(message)
 		case <-f.stop:
 			f.closed = true
 			f.exit <- true
@@ -57,13 +65,22 @@ func (f *fetch) Fetch() {
 	}
 }
 
-func (f *fetch) Acknowledge(message string) {
-	conn := Config.pool.Get()
-	defer conn.Close()
-	conn.Do("lrem", f.inprogressQueue(), -1, message)
+func (f *fetch) sendMessage(message string) {
+	msg, _ := NewMsg(message)
+	// TODO handle error case
+	f.Messages() <- msg
 }
 
-func (f *fetch) Messages() chan string {
+func (f *fetch) Acknowledge(message *Msg) {
+	conn := Config.pool.Get()
+	defer conn.Close()
+
+	json, _ := message.Encode()
+	// TODO Handle error case
+	conn.Do("lrem", f.inprogressQueue(), -1, json)
+}
+
+func (f *fetch) Messages() chan *Msg {
 	return f.messages
 }
 
@@ -74,16 +91,6 @@ func (f *fetch) Close() {
 
 func (f *fetch) Closed() bool {
 	return f.closed
-}
-
-func (f *fetch) processOldMessages() {
-	oldMessages := f.inprogressMessages()
-
-	if len(oldMessages) > 0 {
-		for _, m := range oldMessages {
-			f.Messages() <- m
-		}
-	}
 }
 
 func (f *fetch) inprogressMessages() []string {
@@ -105,7 +112,7 @@ func (f *fetch) inprogressQueue() string {
 func newFetch(m *manager) Fetcher {
 	return &fetch{
 		m,
-		make(chan string),
+		make(chan *Msg),
 		make(chan bool),
 		make(chan bool),
 		false,

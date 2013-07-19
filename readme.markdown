@@ -10,7 +10,7 @@ Example usage:
     	"github.com/jrallison/go-workers"
     )
     
-    func myJob(message interface{}) bool {
+    func myJob(message *workers.Msg) bool {
       // do something with your message
       return true
     }

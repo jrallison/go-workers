@@ -10,7 +10,7 @@ type manager struct {
 	job         jobFunc
 	concurrency int
 	workers     []*worker
-	confirm     chan string
+	confirm     chan *Msg
 	stop        chan bool
 	exit        chan bool
 	*sync.WaitGroup
@@ -72,7 +72,7 @@ func newManager(queue string, job jobFunc, concurrency int) *manager {
 		job,
 		concurrency,
 		make([]*worker, concurrency),
-		make(chan string),
+		make(chan *Msg),
 		make(chan bool),
 		make(chan bool),
 		&sync.WaitGroup{},

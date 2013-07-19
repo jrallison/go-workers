@@ -8,10 +8,10 @@ import (
 )
 
 func ManagerSpec(c gospec.Context) {
-	processed := make(chan string)
+	processed := make(chan *Msg)
 
-	testJob := (func(message interface{}) bool {
-		processed <- message.(string)
+	testJob := (func(message *Msg) bool {
+		processed <- message
 		return true
 	})
 
@@ -36,16 +36,19 @@ func ManagerSpec(c gospec.Context) {
 		conn := Config.pool.Get()
 		defer conn.Close()
 
+		message, _ := NewMsg("{\"foo\":\"bar\"}")
+		message2, _ := NewMsg("{\"foo\":\"bar2\"}")
+
 		c.Specify("coordinates processing of queue messages", func() {
 			manager := newManager("manager1", testJob, 10)
 
-			conn.Do("lpush", "manager1", "test")
-			conn.Do("lpush", "manager1", "test2")
+			conn.Do("lpush", "manager1", message.ToJson())
+			conn.Do("lpush", "manager1", message2.ToJson())
 
 			manager.start()
 
-			c.Expect(<-processed, Equals, "test")
-			c.Expect(<-processed, Equals, "test2")
+			c.Expect(<-processed, Equals, message)
+			c.Expect(<-processed, Equals, message2)
 
 			manager.quit()
 
@@ -59,8 +62,8 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.prepare()
 
-			conn.Do("lpush", "manager2", "testa")
-			conn.Do("lpush", "manager2", "testb")
+			conn.Do("lpush", "manager2", message)
+			conn.Do("lpush", "manager2", message2)
 
 			manager.quit()
 

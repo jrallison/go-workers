@@ -1,3 +1,3 @@
 package workers
 
-type jobFunc func(message interface{}) bool
+type jobFunc func(message *Msg) bool

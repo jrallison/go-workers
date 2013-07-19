@@ -15,11 +15,11 @@ func (w *worker) quit() {
 	<-w.exit
 }
 
-func (w *worker) work(messages chan string) {
+func (w *worker) work(messages chan *Msg) {
 	for {
 		select {
 		case message := <-messages:
-			Middleware.call(w.manager.queue, message, func() {
+			Middleware.call(message, func() {
 				w.manager.job(message)
 			})
 
