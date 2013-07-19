@@ -15,12 +15,11 @@ func (l *testMiddleware) Call(message interface{}, next func()) {
 }
 
 func WorkerSpec(c gospec.Context) {
-	var processed = make([]*Msg, 0)
+	var processed = make(chan *Args)
 	middlewareCalled = false
 
-	var testJob = (func(message *Msg) bool {
-		processed = append(processed, message)
-		return true
+	var testJob = (func(args *Args) {
+		processed <- args
 	})
 
 	manager := newManager("myqueue", testJob, 1)
@@ -35,25 +34,30 @@ func WorkerSpec(c gospec.Context) {
 	c.Specify("work", func() {
 		worker := newWorker(manager)
 		messages := make(chan *Msg)
-		message, _ := NewMsg("{\"foo\":\"bar\"}")
+		message, _ := NewMsg("{\"foo\":\"bar\",\"args\":[\"foo\",\"bar\"]}")
 
-		c.Specify("gives each message to a new job instance, and calls perform", func() {
+		c.Specify("calls job with message args", func() {
 			go worker.work(messages)
 			messages <- message
 
-			c.Expect(len(processed), Equals, 1)
-			c.Expect(processed, Contains, message)
+			args, _ := (<-processed).Array()
+			<-manager.confirm
 
-			close(messages)
+			c.Expect(len(args), Equals, 2)
+			c.Expect(args[0], Equals, "foo")
+			c.Expect(args[1], Equals, "bar")
+
+			worker.quit()
 		})
 
 		c.Specify("confirms job completed", func() {
 			go worker.work(messages)
 			messages <- message
 
+			<-processed
 			c.Expect(<-manager.confirm, Equals, message)
 
-			close(messages)
+			worker.quit()
 		})
 
 		c.Specify("runs defined middleware", func() {
@@ -62,9 +66,12 @@ func WorkerSpec(c gospec.Context) {
 			go worker.work(messages)
 			messages <- message
 
+			<-processed
+			<-manager.confirm
+
 			c.Expect(middlewareCalled, IsTrue)
 
-			close(messages)
+			worker.quit()
 		})
 	})
 }

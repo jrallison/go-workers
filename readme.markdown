@@ -1,6 +1,5 @@
-Proof of concept for creating [Resque](https://github.com/resque/resque) and
-[Sidekiq](http://sidekiq.org/) compatible background workers in
-[golang](http://golang.org/).
+Proof of concept for creating [Sidekiq](http://sidekiq.org/) compatible
+background workers in [golang](http://golang.org/).
 
 Example usage:
 
@@ -10,9 +9,8 @@ Example usage:
     	"github.com/jrallison/go-workers"
     )
     
-    func myJob(message *workers.Msg) bool {
+    func myJob(args *workers.Args) {
       // do something with your message
-      return true
     }
     
     func main() {

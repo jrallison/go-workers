@@ -23,4 +23,16 @@ func MsgSpec(c gospec.Context) {
 			c.Expect(err, Not(IsNil))
 		})
 	})
+
+	c.Specify("Args", func() {
+		c.Specify("returns args key", func() {
+			msg, _ := NewMsg("{\"hello\":\"world\",\"args\":[\"foo\",\"bar\"]}")
+			c.Expect(msg.Args().ToJson(), Equals, "[\"foo\",\"bar\"]")
+		})
+
+		c.Specify("returns empty array if args key doesn't exist", func() {
+			msg, _ := NewMsg("{\"hello\":\"world\"}")
+			c.Expect(msg.Args().ToJson(), Equals, "[]")
+		})
+	})
 }

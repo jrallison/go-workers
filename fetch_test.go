@@ -93,9 +93,9 @@ func FetchSpec(c gospec.Context) {
 
 			fetch, _ := buildFetcher("fetchQueue5")
 
-			c.Expect(<-fetch.Messages(), Equals, message2)
-			c.Expect(<-fetch.Messages(), Equals, message)
-			c.Expect(<-fetch.Messages(), Equals, message3)
+			c.Expect((<-fetch.Messages()).ToJson(), Equals, message2.ToJson())
+			c.Expect((<-fetch.Messages()).ToJson(), Equals, message.ToJson())
+			c.Expect((<-fetch.Messages()).ToJson(), Equals, message3.ToJson())
 
 			fetch.Acknowledge(message)
 			fetch.Acknowledge(message2)

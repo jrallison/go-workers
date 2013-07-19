@@ -4,24 +4,45 @@ import (
 	"github.com/bitly/go-simplejson"
 )
 
-type Msg struct {
+type data struct {
 	*simplejson.Json
 }
 
-func (m *Msg) ToJson() string {
-	json, _ := m.Encode()
+type Msg struct {
+	*data
+}
+
+type Args struct {
+	*data
+}
+
+func (m *Msg) Args() *Args {
+	if args, ok := m.CheckGet("args"); ok {
+		return &Args{&data{args}}
+	} else {
+		d, _ := newData("[]")
+		return &Args{d}
+	}
+}
+
+func (d *data) ToJson() string {
+	json, _ := d.Encode()
 	// TODO handle error
 	return string(json)
 }
 
-func (m *Msg) Equals(other interface{}) bool {
-	return m.ToJson() == other.(*Msg).ToJson()
+func NewMsg(content string) (*Msg, error) {
+	if d, err := newData(content); err != nil {
+		return nil, err
+	} else {
+		return &Msg{d}, nil
+	}
 }
 
-func NewMsg(content string) (*Msg, error) {
+func newData(content string) (*data, error) {
 	if json, err := simplejson.NewJson([]byte(content)); err != nil {
 		return nil, err
 	} else {
-		return &Msg{json}, nil
+		return &data{json}, nil
 	}
 }

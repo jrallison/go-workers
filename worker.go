@@ -20,7 +20,7 @@ func (w *worker) work(messages chan *Msg) {
 		select {
 		case message := <-messages:
 			Middleware.call(message, func() {
-				w.manager.job(message)
+				w.manager.job(message.Args())
 			})
 
 			w.manager.confirm <- message
