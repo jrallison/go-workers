@@ -46,8 +46,8 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.start()
 
-			c.Expect((<-processed).ToJson(), Equals, message.Args().ToJson())
-			c.Expect((<-processed).ToJson(), Equals, message2.Args().ToJson())
+			c.Expect(<-processed, Equals, message.Args())
+			c.Expect(<-processed, Equals, message2.Args())
 
 			manager.quit()
 

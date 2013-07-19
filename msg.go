@@ -2,6 +2,7 @@ package workers
 
 import (
 	"github.com/bitly/go-simplejson"
+	"reflect"
 )
 
 type data struct {
@@ -29,6 +30,11 @@ func (d *data) ToJson() string {
 	json, _ := d.Encode()
 	// TODO handle error
 	return string(json)
+}
+
+func (d *data) Equals(other interface{}) bool {
+	otherJson := reflect.ValueOf(other).MethodByName("ToJson").Call([]reflect.Value{})
+	return d.ToJson() == otherJson[0].String()
 }
 
 func NewMsg(content string) (*Msg, error) {
