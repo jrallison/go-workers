@@ -1,7 +1,7 @@
 package workers
 
 type Action interface {
-	Call(message interface{}, next func())
+	Call(queue string, message *Msg, next func())
 }
 
 type middleware struct {
@@ -19,14 +19,18 @@ func (m *middleware) Prepend(action Action) {
 	m.actions = actions
 }
 
-func (m *middleware) call(message *Msg, final func()) {
-	continuation(m.actions, message, final)()
+func (m *middleware) call(queue string, message *Msg, final func()) {
+	continuation(m.actions, queue, message, final)()
 }
 
-func continuation(actions []Action, message *Msg, final func()) func() {
+func continuation(actions []Action, queue string, message *Msg, final func()) func() {
 	return func() {
 		if len(actions) > 0 {
-			actions[0].Call(message, continuation(actions[1:], message, final))
+			actions[0].Call(
+				queue,
+				message,
+				continuation(actions[1:], queue, message, final),
+			)
 		} else {
 			final()
 		}

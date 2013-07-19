@@ -19,7 +19,7 @@ func (w *worker) work(messages chan *Msg) {
 	for {
 		select {
 		case message := <-messages:
-			Middleware.call(message, func() {
+			Middleware.call(w.manager.queue, message, func() {
 				w.process(message)
 			})
 

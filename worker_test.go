@@ -9,7 +9,7 @@ var middlewareCalled bool
 
 type testMiddleware struct{}
 
-func (l *testMiddleware) Call(message interface{}, next func()) {
+func (l *testMiddleware) Call(queue string, message *Msg, next func()) {
 	middlewareCalled = true
 	next()
 }

@@ -24,13 +24,13 @@ var order = make([]string, 0)
 type m1 struct{}
 type m2 struct{}
 
-func (m *m1) Call(message interface{}, next func()) {
+func (m *m1) Call(queue string, message *Msg, next func()) {
 	order = append(order, "m1 enter")
 	next()
 	order = append(order, "m1 leave")
 }
 
-func (m *m2) Call(message interface{}, next func()) {
+func (m *m2) Call(queue string, message *Msg, next func()) {
 	order = append(order, "m2 enter")
 	next()
 	order = append(order, "m2 leave")
@@ -60,7 +60,7 @@ func MiddlewareSpec(c gospec.Context) {
 			middleware.Append(first)
 			middleware.Append(second)
 
-			middleware.call(message, func() {
+			middleware.call("myqueue", message, func() {
 				order = append(order, "job")
 			})
 
@@ -82,7 +82,7 @@ func MiddlewareSpec(c gospec.Context) {
 			middleware.Prepend(first)
 			middleware.Prepend(second)
 
-			middleware.call(message, func() {
+			middleware.call("myqueue", message, func() {
 				order = append(order, "job")
 			})
 
