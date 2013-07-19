@@ -73,5 +73,20 @@ func WorkerSpec(c gospec.Context) {
 
 			worker.quit()
 		})
+
+		c.Specify("recovers and confirms if job panics", func() {
+			var panicJob = (func(args *Args) {
+				panic("AHHHHHHHHH")
+			})
+
+			manager := newManager("myqueue", panicJob, 1)
+			worker := newWorker(manager)
+
+			go worker.work(messages)
+			messages <- message
+			c.Expect(<-manager.confirm, Equals, message)
+
+			worker.quit()
+		})
 	})
 }
