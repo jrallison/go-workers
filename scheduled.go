@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"time"
 )
@@ -45,7 +46,7 @@ func (s *scheduled) poll(continuing bool) {
 
 			if removed, _ := redis.Bool(conn.Do("zrem", key, messages[0])); removed {
 				queue, _ := message.Get("queue").String()
-				conn.Do("lpush", queue, message.ToJson())
+				conn.Do("lpush", fmt.Sprint("queue:", queue), message.ToJson())
 			}
 		}
 	}

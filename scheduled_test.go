@@ -26,8 +26,8 @@ func ScheduledSpec(c gospec.Context) {
 
 		scheduled.poll(false)
 
-		defaultCount, _ := redis.Int(conn.Do("llen", "default"))
-		myqueueCount, _ := redis.Int(conn.Do("llen", "myqueue"))
+		defaultCount, _ := redis.Int(conn.Do("llen", "queue:default"))
+		myqueueCount, _ := redis.Int(conn.Do("llen", "queue:myqueue"))
 		pending, _ := redis.Int(conn.Do("zcard", "goretry"))
 
 		c.Expect(defaultCount, Equals, 1)

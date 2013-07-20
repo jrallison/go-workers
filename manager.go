@@ -1,6 +1,8 @@
 package workers
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -65,9 +67,13 @@ func (m *manager) loadWorkers() {
 	}
 }
 
+func (m *manager) queueName() string {
+	return strings.Replace(m.queue, "queue:", "", 1)
+}
+
 func newManager(queue string, job jobFunc, concurrency int) *manager {
 	m := &manager{
-		queue,
+		fmt.Sprint("queue:", queue),
 		nil,
 		job,
 		concurrency,

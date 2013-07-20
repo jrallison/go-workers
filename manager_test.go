@@ -15,9 +15,9 @@ func ManagerSpec(c gospec.Context) {
 	})
 
 	c.Specify("newManager", func() {
-		c.Specify("sets queue", func() {
+		c.Specify("sets queue with namespace", func() {
 			manager := newManager("myqueue", testJob, 10)
-			c.Expect(manager.queue, Equals, "myqueue")
+			c.Expect(manager.queue, Equals, "queue:myqueue")
 		})
 
 		c.Specify("sets job function", func() {
@@ -41,8 +41,8 @@ func ManagerSpec(c gospec.Context) {
 		c.Specify("coordinates processing of queue messages", func() {
 			manager := newManager("manager1", testJob, 10)
 
-			conn.Do("lpush", "manager1", message.ToJson())
-			conn.Do("lpush", "manager1", message2.ToJson())
+			conn.Do("lpush", "queue:manager1", message.ToJson())
+			conn.Do("lpush", "queue:manager1", message2.ToJson())
 
 			manager.start()
 
@@ -51,7 +51,7 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.quit()
 
-			len, _ := redis.Int(conn.Do("llen", "manager1"))
+			len, _ := redis.Int(conn.Do("llen", "queue:manager1"))
 			c.Expect(len, Equals, 0)
 		})
 
@@ -61,12 +61,12 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.prepare()
 
-			conn.Do("lpush", "manager2", message)
-			conn.Do("lpush", "manager2", message2)
+			conn.Do("lpush", "queue:manager2", message)
+			conn.Do("lpush", "queue:manager2", message2)
 
 			manager.quit()
 
-			len, _ := redis.Int(conn.Do("llen", "manager2"))
+			len, _ := redis.Int(conn.Do("llen", "queue:manager2"))
 			c.Expect(len, Equals, 2)
 		})
 	})
