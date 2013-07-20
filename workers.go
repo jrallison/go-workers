@@ -14,7 +14,8 @@ const (
 var managers = make(map[string]*manager)
 var schedule = newScheduled(RETRY_KEY)
 var control = make(map[string]chan string)
-var logger = log.New(os.Stdout, "background: ", log.Ldate|log.Lmicroseconds)
+
+var Logger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
 
 var Middleware = newMiddleware(
 	&MiddlewareLogging{},
@@ -38,8 +39,8 @@ func Run() {
 }
 
 func Quit() {
-	for _, manager := range managers {
-		manager.quit()
+	for _, m := range managers {
+		go (func(m *manager) { m.quit() })(m)
 	}
 
 	schedule.quit()

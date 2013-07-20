@@ -11,6 +11,7 @@ type data struct {
 
 type Msg struct {
 	*data
+	original string
 }
 
 type Args struct {
@@ -30,11 +31,15 @@ func (m *Msg) Args() *Args {
 	}
 }
 
+func (m *Msg) OriginalJson() string {
+	return m.original
+}
+
 func (d *data) ToJson() string {
 	json, err := d.Encode()
 
 	if err != nil {
-		logger.Println("ERR: Couldn't generate json from", d, ":", err)
+		Logger.Println("ERR: Couldn't generate json from", d, ":", err)
 	}
 
 	return string(json)
@@ -49,7 +54,7 @@ func NewMsg(content string) (*Msg, error) {
 	if d, err := newData(content); err != nil {
 		return nil, err
 	} else {
-		return &Msg{d}, nil
+		return &Msg{d, content}, nil
 	}
 }
 

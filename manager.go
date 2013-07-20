@@ -30,6 +30,7 @@ func (m *manager) prepare() {
 }
 
 func (m *manager) quit() {
+	Logger.Println("quitting queue", m.queueName(), "(waiting for", m.processing(), "/", len(m.workers), "workers).")
 	m.prepare()
 
 	for _, worker := range m.workers {
@@ -43,7 +44,7 @@ func (m *manager) quit() {
 }
 
 func (m *manager) manage() {
-	logger.Println("starting to manage: ", m.queue)
+	Logger.Println("processing queue", m.queueName(), "with", m.concurrency, "workers.")
 
 	m.loadWorkers()
 
@@ -65,6 +66,16 @@ func (m *manager) loadWorkers() {
 		m.workers[i] = newWorker(m)
 		m.workers[i].start()
 	}
+}
+
+func (m *manager) processing() (count int) {
+	for _, worker := range m.workers {
+		if worker.processing {
+			count++
+		}
+	}
+
+	return
 }
 
 func (m *manager) queueName() string {

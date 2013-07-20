@@ -1,9 +1,10 @@
 package workers
 
 type worker struct {
-	manager *manager
-	stop    chan bool
-	exit    chan bool
+	manager    *manager
+	stop       chan bool
+	exit       chan bool
+	processing bool
 }
 
 func (w *worker) start() {
@@ -19,8 +20,10 @@ func (w *worker) work(messages chan *Msg) {
 	for {
 		select {
 		case message := <-messages:
+			w.processing = true
 			w.process(message)
 			w.manager.confirm <- message
+			w.processing = false
 		case <-w.stop:
 			w.exit <- true
 			break
@@ -39,5 +42,5 @@ func (w *worker) process(message *Msg) {
 }
 
 func newWorker(m *manager) *worker {
-	return &worker{m, make(chan bool), make(chan bool)}
+	return &worker{m, make(chan bool), make(chan bool), false}
 }
