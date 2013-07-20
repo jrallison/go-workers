@@ -70,7 +70,7 @@ func (m *manager) loadWorkers() {
 
 func (m *manager) processing() (count int) {
 	for _, worker := range m.workers {
-		if worker.processing {
+		if worker.processing() {
 			count++
 		}
 	}

@@ -1,10 +1,15 @@
 package workers
 
+import (
+	"time"
+)
+
 type worker struct {
 	manager    *manager
 	stop       chan bool
 	exit       chan bool
-	processing bool
+	currentMsg *Msg
+	startedAt  int64
 }
 
 func (w *worker) start() {
@@ -20,10 +25,14 @@ func (w *worker) work(messages chan *Msg) {
 	for {
 		select {
 		case message := <-messages:
-			w.processing = true
+			w.startedAt = time.Now().UTC().Unix()
+			w.currentMsg = message
+
 			w.process(message)
+
 			w.manager.confirm <- message
-			w.processing = false
+			w.startedAt = 0
+			w.currentMsg = nil
 		case <-w.stop:
 			w.exit <- true
 			break
@@ -41,6 +50,10 @@ func (w *worker) process(message *Msg) {
 	})
 }
 
+func (w *worker) processing() bool {
+	return w.startedAt > 0
+}
+
 func newWorker(m *manager) *worker {
-	return &worker{m, make(chan bool), make(chan bool), false}
+	return &worker{m, make(chan bool), make(chan bool), nil, 0}
 }

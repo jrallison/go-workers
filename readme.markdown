@@ -22,11 +22,12 @@ Example usage:
 
     	workers.Process("myqueue", myJob, 10)
     	workers.Process("myqueue2", myJob, 10)
+
+      go workers.StatsServer(8080)
+
     	workers.Run()
     }
 
-
 TODO:
 
-* listen for signals to stop processing
 * expose status / metrics
