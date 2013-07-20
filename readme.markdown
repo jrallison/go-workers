@@ -28,8 +28,5 @@ Example usage:
 
 TODO:
 
-* retries
-* sync message format with resque/sidekiq
-* improve logging / error handling
 * listen for signals to stop processing
 * expose status / metrics

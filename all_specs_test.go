@@ -35,6 +35,7 @@ func TestAllSpecs(t *testing.T) {
 	r.AddSpec(FetchSpec)
 	r.AddSpec(WorkerSpec)
 	r.AddSpec(ManagerSpec)
+	r.AddSpec(ScheduledSpec)
 	r.AddSpec(MiddlewareSpec)
 	r.AddSpec(MiddlewareRetrySpec)
 

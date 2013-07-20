@@ -69,7 +69,7 @@ func (f *fetch) sendMessage(message string) {
 	msg, err := NewMsg(message)
 
 	if err != nil {
-		fmt.Println("ERR: Couldn't create message from", message, ":", err)
+		logger.Println("ERR: Couldn't create message from", message, ":", err)
 		return
 	}
 

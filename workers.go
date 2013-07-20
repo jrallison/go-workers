@@ -20,7 +20,12 @@ func Process(queue string, job jobFunc, concurrency int) {
 }
 
 func Run() {
+	scheduled := newScheduled("goretry")
+	scheduled.start()
+
 	for _, manager := range managers {
 		manager.Wait()
 	}
+
+	scheduled.quit()
 }

@@ -30,9 +30,7 @@ func (w *worker) work(messages chan *Msg) {
 
 func (w *worker) process(message *Msg) {
 	defer func() {
-		if e := recover(); e != nil {
-			logger.Println("jid:", message.Jid(), "FAILED:", e)
-		}
+		recover()
 	}()
 
 	Middleware.call(w.manager.queue, message, func() {
