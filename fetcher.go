@@ -46,7 +46,7 @@ func (f *fetch) Fetch() {
 			message, err := redis.String(conn.Do("brpoplpush", f.manager.queue, f.inprogressQueue(), 1))
 
 			if err != nil {
-				logger.Println("ERR: ", err, f)
+				logger.Println("ERR: ", err)
 			} else {
 				c <- message
 			}
@@ -66,18 +66,20 @@ func (f *fetch) Fetch() {
 }
 
 func (f *fetch) sendMessage(message string) {
-	msg, _ := NewMsg(message)
-	// TODO handle error case
+	msg, err := NewMsg(message)
+
+	if err != nil {
+		fmt.Println("ERR: Couldn't create message from", message, ":", err)
+		return
+	}
+
 	f.Messages() <- msg
 }
 
 func (f *fetch) Acknowledge(message *Msg) {
 	conn := Config.pool.Get()
 	defer conn.Close()
-
-	json, _ := message.Encode()
-	// TODO Handle error case
-	conn.Do("lrem", f.inprogressQueue(), -1, json)
+	conn.Do("lrem", f.inprogressQueue(), -1, message.ToJson())
 }
 
 func (f *fetch) Messages() chan *Msg {
@@ -99,7 +101,7 @@ func (f *fetch) inprogressMessages() []string {
 
 	messages, err := redis.Strings(conn.Do("lrange", f.inprogressQueue(), 0, -1))
 	if err != nil {
-		logger.Println("ERR: ", err, f)
+		logger.Println("ERR: ", err)
 	}
 
 	return messages

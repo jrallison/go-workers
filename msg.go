@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"fmt"
 	"github.com/bitly/go-simplejson"
 	"reflect"
 )
@@ -31,8 +32,12 @@ func (m *Msg) Args() *Args {
 }
 
 func (d *data) ToJson() string {
-	json, _ := d.Encode()
-	// TODO handle error
+	json, err := d.Encode()
+
+	if err != nil {
+		fmt.Println("ERR: Couldn't generate json from", d, ":", err)
+	}
+
 	return string(json)
 }
 
