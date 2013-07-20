@@ -27,7 +27,3 @@ Example usage:
 
     	workers.Run()
     }
-
-TODO:
-
-* expose status / metrics
