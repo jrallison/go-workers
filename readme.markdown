@@ -1,4 +1,4 @@
-Proof of concept for creating [Sidekiq](http://sidekiq.org/) compatible
+[Sidekiq](http://sidekiq.org/) compatible
 background workers in [golang](http://golang.org/).
 
 Example usage:
