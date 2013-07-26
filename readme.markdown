@@ -7,6 +7,7 @@ background workers in [golang](http://golang.org/).
 * customize concurrency per queue
 * responds to Unix signals to safely wait for jobs to finish before exiting.
 * provides stats on what jobs are currently running
+* well tested
 
 Example usage:
 
