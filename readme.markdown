@@ -1,6 +1,13 @@
 [Sidekiq](http://sidekiq.org/) compatible
 background workers in [golang](http://golang.org/).
 
+* reliable queueing for all queues using [brpoplpush](http://redis.io/commands/brpoplpush)
+* handles retries
+* support custom middleware
+* customize concurrency per queue
+* responds to Unix signals to safely wait for jobs to finish before exiting.
+* provides stats on what jobs are currently running
+
 Example usage:
 
     package main
@@ -13,17 +20,35 @@ Example usage:
       // do something with your message
     }
     
+    type myMiddleware struct{}
+
+    func (r *myMiddleware) Call(queue string, message *workers.Msg, next func()) {
+      // do something before each message is processed
+      next()
+      // do something after each message is processed
+    }
+    
     func main() {
       workers.Configure(map[string]string{
-        "server":  "localhost:6400",
-        "pool":    "20",
+        // location of redis instance
+        "server":  "localhost:6379",
+        // number of connections to keep open with redis
+        "pool":    "30",
+        // unique process id for this instance of workers (for proper recovery of inprogress jobs on crash)
         "process": "1",
       })
+      
+      workers.Middleware.Append(&myMiddleware{})
 
-    	workers.Process("myqueue", myJob, 10)
-    	workers.Process("myqueue2", myJob, 10)
+      // pull messages from "myqueue" with concurrency of 10
+      workers.Process("myqueue", myJob, 10)
+      
+      // pull messages from "myqueue2" with concurrency of 20
+      workers.Process("myqueue2", myJob, 20)
 
+      // stats will be available at http://localhost:8080/stats
       go workers.StatsServer(8080)
 
-    	workers.Run()
+      // Blocks until process is told to exit via unix signal
+      workers.Run()
     }
