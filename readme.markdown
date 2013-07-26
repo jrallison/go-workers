@@ -19,6 +19,7 @@ Example usage:
     
     func myJob(args *workers.Args) {
       // do something with your message
+      // args is a wrapper around go-simplejson (http://godoc.org/github.com/bitly/go-simplejson)
     }
     
     type myMiddleware struct{}
