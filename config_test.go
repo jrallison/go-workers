@@ -22,7 +22,7 @@ func ConfigSpec(c gospec.Context) {
 		c.Expect(Config.pool.MaxIdle, Equals, 1)
 
 		Configure(map[string]string{
-			"server":  "localhost:6400",
+			"server":  "localhost:6379",
 			"process": "1",
 			"pool":    "20",
 		})
@@ -34,7 +34,7 @@ func ConfigSpec(c gospec.Context) {
 		c.Expect(Config.processId, Equals, "1")
 
 		Configure(map[string]string{
-			"server":  "localhost:6400",
+			"server":  "localhost:6379",
 			"process": "2",
 		})
 
@@ -51,7 +51,7 @@ func ConfigSpec(c gospec.Context) {
 
 	c.Specify("requires a process parameter", func() {
 		err := recoverOnPanic(func() {
-			Configure(map[string]string{"server": "localhost:6400"})
+			Configure(map[string]string{"server": "localhost:6379"})
 		})
 
 		c.Expect(err, Equals, "Configure requires a 'process' option, which uniquely identifies this instance")
