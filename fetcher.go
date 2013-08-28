@@ -46,7 +46,10 @@ func (f *fetch) Fetch() {
 			message, err := redis.String(conn.Do("brpoplpush", f.manager.queue, f.inprogressQueue(), 1))
 
 			if err != nil {
-				Logger.Println("ERR: ", err)
+				// If redis returns null, the queue is empty. Just ignore the error.
+				if err != fmt.Errorf("redigo: nil returned") {
+					Logger.Println("ERR: ", err)
+				}
 			} else {
 				c <- message
 			}
