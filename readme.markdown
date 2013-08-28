@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/jrallison/go-workers.png)](https://travis-ci.org/jrallison/go-workers)
+
 [Sidekiq](http://sidekiq.org/) compatible
 background workers in [golang](http://golang.org/).
 
