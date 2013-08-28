@@ -16,9 +16,9 @@ func TestAllSpecs(t *testing.T) {
 
 	r.Parallel = false
 
-	// Load test instance of redis on port 6400
+	// Load test instance of redis on port 6379
 	Configure(map[string]string{
-		"server":  "localhost:6400",
+		"server":  "localhost:6379",
 		"process": "1",
 		"pool":    "1",
 	})
