@@ -56,3 +56,5 @@ Example usage:
       // Blocks until process is told to exit via unix signal
       workers.Run()
     }
+    
+Initial development sponsored by [Customer.io](http://customer.io)
