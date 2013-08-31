@@ -47,7 +47,7 @@ func (f *fetch) Fetch() {
 
 			if err != nil {
 				// If redis returns null, the queue is empty. Just ignore the error.
-				if err != fmt.Errorf("redigo: nil returned") {
+				if err.Error() != "redigo: nil returned" {
 					Logger.Println("ERR: ", err)
 				}
 			} else {
