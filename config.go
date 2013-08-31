@@ -38,6 +38,12 @@ func Configure(options map[string]string) {
 				if err != nil {
 					return nil, err
 				}
+				if options["password"] != "" {
+					if _, err := c.Do("AUTH", options["password"]); err != nil {
+						c.Close()
+						return nil, err
+					}
+				}
 				return c, err
 			},
 			TestOnBorrow: func(c redis.Conn, t time.Time) error {
