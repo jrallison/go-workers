@@ -53,3 +53,7 @@ func Configure(options map[string]string) {
 		},
 	}
 }
+
+func (c *config) GetConn() redis.Conn {
+	return c.pool.Get()
+}
