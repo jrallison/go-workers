@@ -20,7 +20,7 @@ func (l *MiddlewareStats) Call(queue string, message *Msg, next func()) {
 }
 
 func incrementStats(metric string) {
-	conn := Config.pool.Get()
+	conn := Config.Pool.Get()
 	defer conn.Close()
 
 	today := time.Now().UTC().Format("2006-01-02")

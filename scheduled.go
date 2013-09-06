@@ -29,7 +29,7 @@ func (s *scheduled) poll(continuing bool) {
 		return
 	}
 
-	conn := Config.pool.Get()
+	conn := Config.Pool.Get()
 	defer conn.Close()
 
 	now := time.Now().Unix()
