@@ -24,7 +24,7 @@ func TestAllSpecs(t *testing.T) {
 	})
 
 	r.BeforeEach = func() {
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		conn.Do("flushdb")
 		conn.Close()
 	}

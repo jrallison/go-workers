@@ -27,7 +27,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
@@ -41,7 +41,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
@@ -55,7 +55,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
@@ -69,7 +69,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
@@ -83,7 +83,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
@@ -111,7 +111,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
@@ -137,7 +137,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
@@ -163,7 +163,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
@@ -177,7 +177,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
