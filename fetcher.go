@@ -40,7 +40,7 @@ func (f *fetch) Fetch() {
 				break
 			}
 
-			conn := Config.pool.Get()
+			conn := Config.Pool.Get()
 			defer conn.Close()
 
 			message, err := redis.String(conn.Do("brpoplpush", f.manager.queue, f.inprogressQueue(), 1))
@@ -80,7 +80,7 @@ func (f *fetch) sendMessage(message string) {
 }
 
 func (f *fetch) Acknowledge(message *Msg) {
-	conn := Config.pool.Get()
+	conn := Config.Pool.Get()
 	defer conn.Close()
 	conn.Do("lrem", f.inprogressQueue(), -1, message.OriginalJson())
 }
@@ -99,7 +99,7 @@ func (f *fetch) Closed() bool {
 }
 
 func (f *fetch) inprogressMessages() []string {
-	conn := Config.pool.Get()
+	conn := Config.Pool.Get()
 	defer conn.Close()
 
 	messages, err := redis.Strings(conn.Do("lrange", f.inprogressQueue(), 0, -1))

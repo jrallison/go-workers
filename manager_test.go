@@ -32,7 +32,7 @@ func ManagerSpec(c gospec.Context) {
 	})
 
 	c.Specify("manage", func() {
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		message, _ := NewMsg("{\"foo\":\"bar\",\"args\":[\"foo\",\"bar\"]}")

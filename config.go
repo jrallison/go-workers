@@ -8,7 +8,7 @@ import (
 
 type config struct {
 	processId string
-	pool      *redis.Pool
+	Pool      *redis.Pool
 }
 
 var Config *config

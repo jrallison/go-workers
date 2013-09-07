@@ -18,7 +18,7 @@ func MiddlewareStatsSpec(c gospec.Context) {
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
 
 	c.Specify("increments processed stats", func() {
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		count, _ := redis.Int(conn.Do("get", "stat:processed"))
@@ -45,7 +45,7 @@ func MiddlewareStatsSpec(c gospec.Context) {
 		worker := newWorker(manager)
 
 		c.Specify("increments failed stats", func() {
-			conn := Config.pool.Get()
+			conn := Config.Pool.Get()
 			defer conn.Close()
 
 			count, _ := redis.Int(conn.Do("get", "stat:failed"))

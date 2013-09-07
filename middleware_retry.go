@@ -16,7 +16,7 @@ type MiddlewareRetry struct{}
 func (r *MiddlewareRetry) Call(queue string, message *Msg, next func()) {
 	defer func() {
 		if e := recover(); e != nil {
-			conn := Config.pool.Get()
+			conn := Config.Pool.Get()
 			defer conn.Close()
 
 			if retry(message) {

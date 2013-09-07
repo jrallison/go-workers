@@ -11,7 +11,7 @@ func ScheduledSpec(c gospec.Context) {
 	scheduled := newScheduled(RETRY_KEY)
 
 	c.Specify("empties retry queues up to the current time", func() {
-		conn := Config.pool.Get()
+		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		now := time.Now().Unix()
