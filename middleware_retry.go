@@ -26,7 +26,7 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func()) {
 
 				conn.Do(
 					"zadd",
-					RETRY_KEY,
+					Config.namespace + RETRY_KEY,
 					time.Now().Unix()+int64(secondsToDelay(retryCount)),
 					message.ToJson(),
 				)

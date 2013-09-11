@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"time"
 )
@@ -35,6 +34,7 @@ func (s *scheduled) poll(continuing bool) {
 	now := time.Now().Unix()
 
 	for _, key := range s.keys {
+		key = Config.namespace + key
 		for {
 			messages, _ := redis.Strings(conn.Do("zrangebyscore", key, "-inf", now, "limit", 0, 1))
 
@@ -46,7 +46,7 @@ func (s *scheduled) poll(continuing bool) {
 
 			if removed, _ := redis.Bool(conn.Do("zrem", key, messages[0])); removed {
 				queue, _ := message.Get("queue").String()
-				conn.Do("lpush", fmt.Sprint("queue:", queue), message.ToJson())
+				conn.Do("lpush", Config.namespace+"queue:"+queue, message.ToJson())
 			}
 		}
 	}

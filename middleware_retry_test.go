@@ -20,6 +20,9 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	manager := newManager("myqueue", panicingJob, 1)
 	worker := newWorker(manager)
 
+	was := Config.namespace
+	Config.namespace = "prod:"
+
 	c.Specify("puts messages in retry queue when they fail", func() {
 		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
 
@@ -30,7 +33,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
+		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		c.Expect(retries[0], Equals, message.ToJson())
 	})
 
@@ -44,7 +47,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
 		c.Expect(count, Equals, 0)
 	})
 
@@ -58,7 +61,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
 		c.Expect(count, Equals, 0)
 	})
 
@@ -72,7 +75,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
+		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		c.Expect(retries[0], Equals, message.ToJson())
 	})
 
@@ -86,7 +89,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
+		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -114,7 +117,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
+		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -140,7 +143,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		retries, _ := redis.Strings(conn.Do("zrange", RETRY_KEY, 0, 1))
+		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -166,7 +169,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
 		c.Expect(count, Equals, 0)
 	})
 
@@ -180,7 +183,9 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		count, _ := redis.Int(conn.Do("zcard", RETRY_KEY))
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
 		c.Expect(count, Equals, 0)
 	})
+
+	Config.namespace = was
 }
