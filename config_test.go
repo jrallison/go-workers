@@ -56,4 +56,16 @@ func ConfigSpec(c gospec.Context) {
 
 		c.Expect(err, Equals, "Configure requires a 'process' option, which uniquely identifies this instance")
 	})
+
+	c.Specify("adds ':' to the end of the namespace", func() {
+		c.Expect(Config.namespace, Equals, "")
+
+		Configure(map[string]string{
+			"server":    "localhost:6379",
+			"process":   "1",
+			"namespace": "prod",
+		})
+
+		c.Expect(Config.namespace, Equals, "prod:")
+	})
 }

@@ -8,6 +8,7 @@ import (
 
 type config struct {
 	processId string
+	namespace string
 	Pool      *redis.Pool
 }
 
@@ -15,6 +16,7 @@ var Config *config
 
 func Configure(options map[string]string) {
 	var poolSize int
+	var namespace string
 
 	if options["server"] == "" {
 		panic("Configure requires a 'server' option, which identifies a Redis instance")
@@ -25,11 +27,15 @@ func Configure(options map[string]string) {
 	if options["pool"] == "" {
 		options["pool"] = "1"
 	}
+	if options["namespace"] != "" {
+		namespace = options["namespace"] + ":"
+	}
 
 	poolSize, _ = strconv.Atoi(options["pool"])
 
 	Config = &config{
 		options["process"],
+		namespace,
 		&redis.Pool{
 			MaxIdle:     poolSize,
 			IdleTimeout: 240 * time.Second,
