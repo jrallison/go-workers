@@ -29,7 +29,6 @@ func (s *scheduled) poll(continuing bool) {
 	}
 
 	conn := Config.Pool.Get()
-	defer conn.Close()
 
 	now := time.Now().Unix()
 
@@ -51,6 +50,7 @@ func (s *scheduled) poll(continuing bool) {
 		}
 	}
 
+	conn.Close()
 	if continuing {
 		time.Sleep(POLL_INTERVAL * time.Second)
 		s.poll(true)

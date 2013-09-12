@@ -35,13 +35,13 @@ func (f *fetch) Fetch() {
 	f.processOldMessages()
 
 	go (func(c chan string) {
+		conn := Config.Pool.Get()
+		defer conn.Close()
+
 		for {
 			if f.Closed() {
 				break
 			}
-
-			conn := Config.Pool.Get()
-			defer conn.Close()
 
 			message, err := redis.String(conn.Do("brpoplpush", f.manager.queue, f.inprogressQueue(), 1))
 
