@@ -50,6 +50,9 @@ Example usage:
       // pull messages from "myqueue2" with concurrency of 20
       workers.Process("myqueue2", myJob, 20)
 
+      // Add a job to a queue
+      workers.Enqueue("myqueue3", "Add", []int{1, 2})
+
       // stats will be available at http://localhost:8080/stats
       go workers.StatsServer(8080)
 
