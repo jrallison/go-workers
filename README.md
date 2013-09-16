@@ -13,51 +13,53 @@ background workers in [golang](http://golang.org/).
 
 Example usage:
 
-    package main
-    
-    import (
-    	"github.com/jrallison/go-workers"
-    )
-    
-    func myJob(args *workers.Args) {
-      // do something with your message
-      // args is a wrapper around go-simplejson (http://godoc.org/github.com/bitly/go-simplejson)
-    }
-    
-    type myMiddleware struct{}
+```go
+package main
 
-    func (r *myMiddleware) Call(queue string, message *workers.Msg, next func()) {
-      // do something before each message is processed
-      next()
-      // do something after each message is processed
-    }
-    
-    func main() {
-      workers.Configure(map[string]string{
-        // location of redis instance
-        "server":  "localhost:6379",
-        // number of connections to keep open with redis
-        "pool":    "30",
-        // unique process id for this instance of workers (for proper recovery of inprogress jobs on crash)
-        "process": "1",
-      })
-      
-      workers.Middleware.Append(&myMiddleware{})
+import (
+	"github.com/jrallison/go-workers"
+)
 
-      // pull messages from "myqueue" with concurrency of 10
-      workers.Process("myqueue", myJob, 10)
-      
-      // pull messages from "myqueue2" with concurrency of 20
-      workers.Process("myqueue2", myJob, 20)
+func myJob(args *workers.Args) {
+  // do something with your message
+  // args is a wrapper around go-simplejson (http://godoc.org/github.com/bitly/go-simplejson)
+}
 
-      // Add a job to a queue
-      workers.Enqueue("myqueue3", "Add", []int{1, 2})
+type myMiddleware struct{}
 
-      // stats will be available at http://localhost:8080/stats
-      go workers.StatsServer(8080)
+func (r *myMiddleware) Call(queue string, message *workers.Msg, next func()) {
+  // do something before each message is processed
+  next()
+  // do something after each message is processed
+}
 
-      // Blocks until process is told to exit via unix signal
-      workers.Run()
-    }
-    
+func main() {
+  workers.Configure(map[string]string{
+    // location of redis instance
+    "server":  "localhost:6379",
+    // number of connections to keep open with redis
+    "pool":    "30",
+    // unique process id for this instance of workers (for proper recovery of inprogress jobs on crash)
+    "process": "1",
+  })
+  
+  workers.Middleware.Append(&myMiddleware{})
+
+  // pull messages from "myqueue" with concurrency of 10
+  workers.Process("myqueue", myJob, 10)
+  
+  // pull messages from "myqueue2" with concurrency of 20
+  workers.Process("myqueue2", myJob, 20)
+
+  // Add a job to a queue
+  workers.Enqueue("myqueue3", "Add", []int{1, 2})
+
+  // stats will be available at http://localhost:8080/stats
+  go workers.StatsServer(8080)
+
+  // Blocks until process is told to exit via unix signal
+  workers.Run()
+}
+```
+
 Initial development sponsored by [Customer.io](http://customer.io)
