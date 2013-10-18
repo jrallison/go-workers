@@ -18,7 +18,7 @@ func Enqueue(queue, class string, args interface{}) error {
 		return err
 	}
 
-	_, err = conn.Do("sadd", Config.namespace+"queues", queue)
+	_, err = conn.Do("sadd", Config.namespace + "queues", queue)
 	if err != nil {
 		return err
 	}
