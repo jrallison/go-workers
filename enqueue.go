@@ -9,6 +9,7 @@ import (
 )
 
 type EnqueueData struct {
+	Queue      string      `json:"queue,omitempty"`
 	Class      string      `json:"class"`
 	Args       interface{} `json:"args"`
 	Jid        string      `json:"jid"`
@@ -41,6 +42,7 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 	defer conn.Close()
 
 	data := EnqueueData{
+		Queue:          queue,
 		Class:          class,
 		Args:           args,
 		Jid:            generateJid(),
