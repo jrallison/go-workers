@@ -50,6 +50,12 @@ func Configure(options map[string]string) {
 						return nil, err
 					}
 				}
+				if options["database"] != "" {
+					if _, err := c.Do("SELECT", options["database"]); err != nil {
+						c.Close()
+						return nil, err
+					}
+				}
 				return c, err
 			},
 			TestOnBorrow: func(c redis.Conn, t time.Time) error {
