@@ -83,7 +83,7 @@ func (m *manager) queueName() string {
 
 func newManager(queue string, job jobFunc, concurrency int) *manager {
 	m := &manager{
-		Config.namespace + "queue:"+ queue,
+		Config.namespace + "queue:" + queue,
 		nil,
 		job,
 		concurrency,
@@ -94,7 +94,7 @@ func newManager(queue string, job jobFunc, concurrency int) *manager {
 		&sync.WaitGroup{},
 	}
 
-	m.fetch = newFetch(m)
+	m.fetch = Config.Fetch(m.queue)
 
 	return m
 }

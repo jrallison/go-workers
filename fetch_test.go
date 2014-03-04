@@ -6,18 +6,18 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-func FetchSpec(c gospec.Context) {
-	var buildFetcher = func(queue string) (*fetch, *manager) {
-		manager := newManager(queue, nil, 1)
-		fetch := newFetch(manager).(*fetch)
-		go fetch.Fetch()
-		return fetch, manager
-	}
+func buildFetch(queue string) Fetcher {
+	manager := newManager(queue, nil, 1)
+	fetch := manager.fetch
+	go fetch.Fetch()
+	return fetch
+}
 
-	c.Specify("newFetch", func() {
-		c.Specify("it returns an instance of fetch with connection to manager", func() {
-			fetch, manager := buildFetcher("fetchQueue1")
-			c.Expect(fetch.manager, Equals, manager)
+func FetchSpec(c gospec.Context) {
+	c.Specify("Config.Fetch", func() {
+		c.Specify("it returns an instance of fetch with queue", func() {
+			fetch := buildFetch("fetchQueue1")
+			c.Expect(fetch.Queue(), Equals, "queue:fetchQueue1")
 			fetch.Close()
 		})
 	})
@@ -26,7 +26,7 @@ func FetchSpec(c gospec.Context) {
 		message, _ := NewMsg("{\"foo\":\"bar\"}")
 
 		c.Specify("it puts messages from the queues on the messages channel", func() {
-			fetch, _ := buildFetcher("fetchQueue2")
+			fetch := buildFetch("fetchQueue2")
 
 			conn := Config.Pool.Get()
 			defer conn.Close()
@@ -44,7 +44,7 @@ func FetchSpec(c gospec.Context) {
 		})
 
 		c.Specify("places in progress messages on private queue", func() {
-			fetch, _ := buildFetcher("fetchQueue3")
+			fetch := buildFetch("fetchQueue3")
 
 			conn := Config.Pool.Get()
 			defer conn.Close()
@@ -63,7 +63,7 @@ func FetchSpec(c gospec.Context) {
 		})
 
 		c.Specify("removes in progress message when acknowledged", func() {
-			fetch, _ := buildFetcher("fetchQueue4")
+			fetch := buildFetch("fetchQueue4")
 
 			conn := Config.Pool.Get()
 			defer conn.Close()
@@ -86,7 +86,7 @@ func FetchSpec(c gospec.Context) {
 
 			c.Expect(json, Not(Equals), message.ToJson())
 
-			fetch, _ := buildFetcher("fetchQueue5")
+			fetch := buildFetch("fetchQueue5")
 
 			conn := Config.Pool.Get()
 			defer conn.Close()
@@ -114,7 +114,7 @@ func FetchSpec(c gospec.Context) {
 			conn.Do("lpush", "queue:fetchQueue6:1:inprogress", message2.ToJson())
 			conn.Do("lpush", "queue:fetchQueue6", message3.ToJson())
 
-			fetch, _ := buildFetcher("fetchQueue6")
+			fetch := buildFetch("fetchQueue6")
 
 			c.Expect(<-fetch.Messages(), Equals, message2)
 			c.Expect(<-fetch.Messages(), Equals, message)

@@ -10,6 +10,7 @@ type config struct {
 	processId string
 	namespace string
 	Pool      *redis.Pool
+	Fetch     func(queue string) Fetcher
 }
 
 var Config *config
@@ -62,6 +63,15 @@ func Configure(options map[string]string) {
 				_, err := c.Do("PING")
 				return err
 			},
+		},
+		func(queue string) Fetcher {
+			return &fetch{
+				queue,
+				make(chan *Msg),
+				make(chan bool),
+				make(chan bool),
+				false,
+			}
 		},
 	}
 }

@@ -8,6 +8,7 @@ import (
 )
 
 type Fetcher interface {
+	Queue() string
 	Fetch()
 	Acknowledge(*Msg)
 	Messages() chan *Msg
@@ -16,11 +17,15 @@ type Fetcher interface {
 }
 
 type fetch struct {
-	manager  *manager
+	queue    string
 	messages chan *Msg
 	stop     chan bool
 	exit     chan bool
 	closed   bool
+}
+
+func (f *fetch) Queue() string {
+	return f.queue
 }
 
 func (f *fetch) processOldMessages() {
@@ -45,7 +50,7 @@ func (f *fetch) Fetch() {
 				break
 			}
 
-			message, err := redis.String(conn.Do("brpoplpush", f.manager.queue, f.inprogressQueue(), 1))
+			message, err := redis.String(conn.Do("brpoplpush", f.queue, f.inprogressQueue(), 1))
 
 			if err != nil {
 				// If redis returns null, the queue is empty. Just ignore the error.
@@ -114,15 +119,5 @@ func (f *fetch) inprogressMessages() []string {
 }
 
 func (f *fetch) inprogressQueue() string {
-	return fmt.Sprint(f.manager.queue, ":", Config.processId, ":inprogress")
-}
-
-func newFetch(m *manager) Fetcher {
-	return &fetch{
-		m,
-		make(chan *Msg),
-		make(chan bool),
-		make(chan bool),
-		false,
-	}
+	return fmt.Sprint(f.queue, ":", Config.processId, ":inprogress")
 }
