@@ -5,6 +5,7 @@ import (
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
+	"time"
 )
 
 func EnqueueSpec(c gospec.Context) {
@@ -44,6 +45,46 @@ func EnqueueSpec(c gospec.Context) {
 			c.Expect(len(args), Equals, 2)
 			c.Expect(args[0], Equals, "foo")
 			c.Expect(args[1], Equals, "bar")
+		})
+
+		c.Specify("has a jid", func() {
+			Enqueue("enqueue4", "Compare", []string{"foo", "bar"})
+
+			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue4"))
+			var result map[string]interface{}
+			json.Unmarshal(bytes, &result)
+			c.Expect(result["class"], Equals, "Compare")
+
+			jid := result["jid"].(string)
+			c.Expect(len(jid), Equals, 24)
+		})
+
+		c.Specify("has enqueued_at that is close to now", func() {
+			Enqueue("enqueue5", "Compare", []string{"foo", "bar"})
+
+			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue5"))
+			var result map[string]interface{}
+			json.Unmarshal(bytes, &result)
+			c.Expect(result["class"], Equals, "Compare")
+
+			ea := result["enqueued_at"].(float64)
+			c.Expect(ea, Not(Equals), 0)
+			c.Expect(ea, IsWithin(0.1), float64(time.Now().UnixNano())/1000000000)
+		})
+
+		c.Specify("has retry and retry_count when set", func() {
+			EnqueueWithOptions("enqueue6", "Compare", []string{"foo", "bar"}, EnqueueOptions{RetryCount: 13, Retry: true})
+
+			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue6"))
+			var result map[string]interface{}
+			json.Unmarshal(bytes, &result)
+			c.Expect(result["class"], Equals, "Compare")
+
+			retry := result["retry"].(bool)
+			c.Expect(retry, Equals, true)
+
+			retryCount := int(result["retry_count"].(float64))
+			c.Expect(retryCount, Equals, 13)
 		})
 	})
 
