@@ -19,7 +19,7 @@ var managers = make(map[string]*manager)
 var schedule = newScheduled(RETRY_KEY)
 var control = make(map[string]chan string)
 
-var Middleware = newMiddleware(
+var Middleware = NewMiddleware(
 	&MiddlewareLogging{},
 	&MiddlewareRetry{},
 	&MiddlewareStats{},

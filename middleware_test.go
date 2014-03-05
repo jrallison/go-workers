@@ -37,7 +37,7 @@ func (m *m2) Call(queue string, message *Msg, next func()) {
 }
 
 func MiddlewareSpec(c gospec.Context) {
-	middleware := newMiddleware()
+	middleware := NewMiddleware()
 	message, _ := NewMsg("{\"foo\":\"bar\"}")
 	order = make([]string, 0)
 	first := &m1{}
@@ -49,7 +49,7 @@ func MiddlewareSpec(c gospec.Context) {
 		})
 
 		c.Specify("can specify middleware when initializing", func() {
-			middleware = newMiddleware(first, second)
+			middleware = NewMiddleware(first, second)
 			c.Expect(middleware.actions[0], Equals, first)
 			c.Expect(middleware.actions[1], Equals, second)
 		})

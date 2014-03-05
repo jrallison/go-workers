@@ -12,7 +12,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		panic("AHHHH")
 	})
 
-	var wares = newMiddleware(
+	var wares = NewMiddleware(
 		&MiddlewareRetry{},
 	)
 
