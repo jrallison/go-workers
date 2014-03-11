@@ -30,15 +30,20 @@ func Process(queue string, job jobFunc, concurrency int) {
 }
 
 func Run() {
-	schedule.start()
-	startManagers()
+	Start()
 	go handleSignals()
 	waitForExit()
+}
+
+func Start() {
+	schedule.start()
+	startManagers()
 }
 
 func Quit() {
 	quitManagers()
 	schedule.quit()
+	waitForExit()
 }
 
 func StatsServer(port int) {

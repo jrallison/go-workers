@@ -30,6 +30,7 @@ func TestAllSpecs(t *testing.T) {
 	}
 
 	// List all specs here
+	r.AddSpec(WorkersSpec)
 	r.AddSpec(ConfigSpec)
 	r.AddSpec(MsgSpec)
 	r.AddSpec(FetchSpec)
