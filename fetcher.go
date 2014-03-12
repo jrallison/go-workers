@@ -16,6 +16,16 @@ type Fetcher interface {
 	Closed() bool
 }
 
+func NewFetch(queue string, messages chan *Msg) Fetcher {
+	return &fetch{
+		queue,
+		messages,
+		make(chan bool),
+		make(chan bool),
+		false,
+	}
+}
+
 type fetch struct {
 	queue    string
 	messages chan *Msg
