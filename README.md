@@ -28,11 +28,12 @@ func myJob(message *workers.Msg()) {
 
 type myMiddleware struct{}
 
-func (r *myMiddleware) Call(queue string, message *workers.Msg, next func()) {
+func (r *myMiddleware) Call(queue string, message *workers.Msg, next func() bool) (acknowledge bool) {
   // do something before each message is processed
-  next()
+  acknowledge = next()
   // do something after each message is processed
-}
+  return
+} 
 
 func main() {
   workers.Configure(map[string]string{
