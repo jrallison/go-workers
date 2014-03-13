@@ -31,6 +31,9 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 					message.ToJson(),
 				)
 
+				// If we can't add the job to the retry queue,
+				// then we shouldn't acknowledge the job, otherwise
+				// it'll disappear into the void.
 				if err != nil {
 					acknowledge = false
 				}
