@@ -52,25 +52,27 @@ func (f *fetch) Fetch() {
 	f.processOldMessages()
 
 	go (func(c chan string) {
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
 		for {
 			if f.Closed() {
 				break
 			}
 
-			message, err := redis.String(conn.Do("brpoplpush", f.queue, f.inprogressQueue(), 1))
+			(func() {
+				conn := Config.Pool.Get()
+				defer conn.Close()
 
-			if err != nil {
-				// If redis returns null, the queue is empty. Just ignore the error.
-				if err.Error() != "redigo: nil returned" {
-					Logger.Println("ERR: ", err)
-					time.Sleep(1 * time.Second)
+				message, err := redis.String(conn.Do("brpoplpush", f.queue, f.inprogressQueue(), 1))
+
+				if err != nil {
+					// If redis returns null, the queue is empty. Just ignore the error.
+					if err.Error() != "redigo: nil returned" {
+						Logger.Println("ERR: ", err)
+						time.Sleep(1 * time.Second)
+					}
+				} else {
+					c <- message
 				}
-			} else {
-				c <- message
-			}
+			})()
 		}
 	})(messages)
 

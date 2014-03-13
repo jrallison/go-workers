@@ -7,7 +7,7 @@ import (
 
 type MiddlewareLogging struct{}
 
-func (l *MiddlewareLogging) Call(queue string, message *Msg, next func()) {
+func (l *MiddlewareLogging) Call(queue string, message *Msg, next func() bool) (acknowledge bool) {
 	prefix := fmt.Sprint(queue, " JID-", message.Jid())
 
 	start := time.Now()
@@ -22,7 +22,9 @@ func (l *MiddlewareLogging) Call(queue string, message *Msg, next func()) {
 		}
 	}()
 
-	next()
+	acknowledge = next()
 
 	Logger.Println(prefix, "done:", time.Since(start))
+
+	return
 }

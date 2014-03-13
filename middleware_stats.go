@@ -6,7 +6,7 @@ import (
 
 type MiddlewareStats struct{}
 
-func (l *MiddlewareStats) Call(queue string, message *Msg, next func()) {
+func (l *MiddlewareStats) Call(queue string, message *Msg, next func() bool) (acknowledge bool) {
 	defer func() {
 		if e := recover(); e != nil {
 			incrementStats("failed")
@@ -14,9 +14,11 @@ func (l *MiddlewareStats) Call(queue string, message *Msg, next func()) {
 		}
 	}()
 
-	next()
+	acknowledge = next()
 
 	incrementStats("processed")
+
+	return
 }
 
 func incrementStats(metric string) {

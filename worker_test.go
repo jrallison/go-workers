@@ -3,20 +3,41 @@ package workers
 import (
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
+
+	"time"
 )
 
-var middlewareCalled bool
+var testMiddlewareCalled bool
+var failMiddlewareCalled bool
 
 type testMiddleware struct{}
 
-func (l *testMiddleware) Call(queue string, message *Msg, next func()) {
-	middlewareCalled = true
+func (l *testMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+	testMiddlewareCalled = true
+	return next()
+}
+
+type failMiddleware struct{}
+
+func (l *failMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+	failMiddlewareCalled = true
 	next()
+	return false
+}
+
+func confirm(manager *manager) (msg *Msg) {
+	time.Sleep(10 * time.Millisecond)
+
+	select {
+	case msg = <-manager.confirm:
+	default:
+	}
+
+	return
 }
 
 func WorkerSpec(c gospec.Context) {
 	var processed = make(chan *Args)
-	middlewareCalled = false
 
 	var testJob = (func(message *Msg) {
 		processed <- message.Args()
@@ -55,23 +76,48 @@ func WorkerSpec(c gospec.Context) {
 			messages <- message
 
 			<-processed
-			c.Expect(<-manager.confirm, Equals, message)
+
+			c.Expect(confirm(manager), Equals, message)
 
 			worker.quit()
 		})
 
-		c.Specify("runs defined middleware", func() {
+		c.Specify("runs defined middleware and confirms", func() {
 			Middleware.Append(&testMiddleware{})
 
 			go worker.work(messages)
 			messages <- message
 
 			<-processed
-			<-manager.confirm
-
-			c.Expect(middlewareCalled, IsTrue)
+			c.Expect(confirm(manager), Equals, message)
+			c.Expect(testMiddlewareCalled, IsTrue)
 
 			worker.quit()
+
+			Middleware = NewMiddleware(
+				&MiddlewareLogging{},
+				&MiddlewareRetry{},
+				&MiddlewareStats{},
+			)
+		})
+
+		c.Specify("doesn't confirm if middleware cancels acknowledgement", func() {
+			Middleware.Append(&failMiddleware{})
+
+			go worker.work(messages)
+			messages <- message
+
+			<-processed
+			c.Expect(confirm(manager), IsNil)
+			c.Expect(failMiddlewareCalled, IsTrue)
+
+			worker.quit()
+
+			Middleware = NewMiddleware(
+				&MiddlewareLogging{},
+				&MiddlewareRetry{},
+				&MiddlewareStats{},
+			)
 		})
 
 		c.Specify("recovers and confirms if job panics", func() {
@@ -84,7 +130,8 @@ func WorkerSpec(c gospec.Context) {
 
 			go worker.work(messages)
 			messages <- message
-			c.Expect(<-manager.confirm, Equals, message)
+
+			c.Expect(confirm(manager), Equals, message)
 
 			worker.quit()
 		})

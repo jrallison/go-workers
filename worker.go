@@ -28,9 +28,10 @@ func (w *worker) work(messages chan *Msg) {
 			w.startedAt = time.Now().UTC().Unix()
 			w.currentMsg = message
 
-			w.process(message)
+			if w.process(message) {
+				w.manager.confirm <- message
+			}
 
-			w.manager.confirm <- message
 			w.startedAt = 0
 			w.currentMsg = nil
 		case <-w.stop:
@@ -40,12 +41,14 @@ func (w *worker) work(messages chan *Msg) {
 	}
 }
 
-func (w *worker) process(message *Msg) {
+func (w *worker) process(message *Msg) (acknowledge bool) {
+	acknowledge = true
+
 	defer func() {
 		recover()
 	}()
 
-	Middleware.call(w.manager.queueName(), message, func() {
+	return Middleware.call(w.manager.queueName(), message, func() {
 		w.manager.job(message)
 	})
 }
