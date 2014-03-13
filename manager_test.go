@@ -10,8 +10,8 @@ import (
 func ManagerSpec(c gospec.Context) {
 	processed := make(chan *Args)
 
-	testJob := (func(args *Args) {
-		processed <- args
+	testJob := (func(message *Msg) {
+		processed <- message.Args()
 	})
 
 	was := Config.namespace

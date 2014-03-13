@@ -20,9 +20,10 @@ import (
 	"github.com/jrallison/go-workers"
 )
 
-func myJob(args *workers.Args) {
+func myJob(message *workers.Msg()) {
   // do something with your message
-  // args is a wrapper around go-simplejson (http://godoc.org/github.com/bitly/go-simplejson)
+  // message.Jid()
+  // message.Args() is a wrapper around go-simplejson (http://godoc.org/github.com/bitly/go-simplejson)
 }
 
 type myMiddleware struct{}

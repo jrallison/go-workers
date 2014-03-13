@@ -8,7 +8,7 @@ import (
 )
 
 func MiddlewareRetrySpec(c gospec.Context) {
-	var panicingJob = (func(args *Args) {
+	var panicingJob = (func(message *Msg) {
 		panic("AHHHH")
 	})
 

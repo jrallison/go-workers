@@ -18,8 +18,8 @@ func WorkerSpec(c gospec.Context) {
 	var processed = make(chan *Args)
 	middlewareCalled = false
 
-	var testJob = (func(args *Args) {
-		processed <- args
+	var testJob = (func(message *Msg) {
+		processed <- message.Args()
 	})
 
 	manager := newManager("myqueue", testJob, 1)
@@ -75,7 +75,7 @@ func WorkerSpec(c gospec.Context) {
 		})
 
 		c.Specify("recovers and confirms if job panics", func() {
-			var panicJob = (func(args *Args) {
+			var panicJob = (func(message *Msg) {
 				panic("AHHHHHHHHH")
 			})
 

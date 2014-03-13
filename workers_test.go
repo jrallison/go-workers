@@ -6,7 +6,7 @@ import (
 
 var called chan bool
 
-func myJob(args *Args) {
+func myJob(message *Msg) {
 	called <- true
 }
 
