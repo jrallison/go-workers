@@ -20,7 +20,7 @@ import (
 	"github.com/jrallison/go-workers"
 )
 
-func myJob(message *workers.Msg()) {
+func myJob(message *workers.Msg) {
   // do something with your message
   // message.Jid()
   // message.Args() is a wrapper around go-simplejson (http://godoc.org/github.com/bitly/go-simplejson)
