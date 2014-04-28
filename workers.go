@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	RETRY_KEY = "goretry"
+	RETRY_KEY          = "goretry"
+	SCHEDULED_JOBS_KEY = "schedule"
 )
 
 var Logger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
 
 var managers = make(map[string]*manager)
-var schedule = newScheduled(RETRY_KEY)
+var schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
 var control = make(map[string]chan string)
 
 var Middleware = NewMiddleware(
