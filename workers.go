@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 const (
@@ -54,18 +52,6 @@ func StatsServer(port int) {
 
 	if err := http.ListenAndServe(fmt.Sprint(":", port), nil); err != nil {
 		Logger.Println(err)
-	}
-}
-
-func handleSignals() {
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
-
-	for sig := range signals {
-		switch sig {
-		case syscall.SIGINT, syscall.SIGUSR1, syscall.SIGTERM:
-			Quit()
-		}
 	}
 }
 
