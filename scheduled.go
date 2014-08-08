@@ -1,8 +1,10 @@
 package workers
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"strings"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -45,6 +47,7 @@ func (s *scheduled) poll(continuing bool) {
 
 			if removed, _ := redis.Bool(conn.Do("zrem", key, messages[0])); removed {
 				queue, _ := message.Get("queue").String()
+				queue = strings.TrimPrefix(queue, Config.namespace)
 				conn.Do("lpush", Config.namespace+"queue:"+queue, message.ToJson())
 			}
 		}
