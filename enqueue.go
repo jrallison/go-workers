@@ -54,11 +54,11 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return err
 	}
 
-	_, err = conn.Do("sadd", Config.namespace+"queues", queue)
+	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
 	if err != nil {
 		return err
 	}
-	queue = Config.namespace + "queue:" + queue
+	queue = Config.Namespace + "queue:" + queue
 	_, err = conn.Do("rpush", queue, bytes)
 	return err
 }

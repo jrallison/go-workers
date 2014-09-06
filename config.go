@@ -8,7 +8,7 @@ import (
 
 type config struct {
 	processId string
-	namespace string
+	Namespace string
 	Pool      *redis.Pool
 	Fetch     func(queue string) Fetcher
 }

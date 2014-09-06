@@ -20,8 +20,8 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	manager := newManager("myqueue", panicingJob, 1)
 	worker := newWorker(manager)
 
-	was := Config.namespace
-	Config.namespace = "prod:"
+	was := Config.Namespace
+	Config.Namespace = "prod:"
 
 	c.Specify("puts messages in retry queue when they fail", func() {
 		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
@@ -187,5 +187,5 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		c.Expect(count, Equals, 0)
 	})
 
-	Config.namespace = was
+	Config.Namespace = was
 }

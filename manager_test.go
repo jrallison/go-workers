@@ -14,8 +14,8 @@ func ManagerSpec(c gospec.Context) {
 		processed <- message.Args()
 	})
 
-	was := Config.namespace
-	Config.namespace = "prod:"
+	was := Config.Namespace
+	Config.Namespace = "prod:"
 
 	c.Specify("newManager", func() {
 		c.Specify("sets queue with namespace", func() {
@@ -75,5 +75,5 @@ func ManagerSpec(c gospec.Context) {
 		})
 	})
 
-	Config.namespace = was
+	Config.Namespace = was
 }

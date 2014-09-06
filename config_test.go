@@ -58,7 +58,7 @@ func ConfigSpec(c gospec.Context) {
 	})
 
 	c.Specify("adds ':' to the end of the namespace", func() {
-		c.Expect(Config.namespace, Equals, "")
+		c.Expect(Config.Namespace, Equals, "")
 
 		Configure(map[string]string{
 			"server":    "localhost:6379",
@@ -66,6 +66,6 @@ func ConfigSpec(c gospec.Context) {
 			"namespace": "prod",
 		})
 
-		c.Expect(Config.namespace, Equals, "prod:")
+		c.Expect(Config.Namespace, Equals, "prod:")
 	})
 }

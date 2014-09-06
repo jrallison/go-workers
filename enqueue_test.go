@@ -9,8 +9,8 @@ import (
 )
 
 func EnqueueSpec(c gospec.Context) {
-	was := Config.namespace
-	Config.namespace = "prod:"
+	was := Config.Namespace
+	Config.Namespace = "prod:"
 
 	c.Specify("Enqueue", func() {
 		conn := Config.Pool.Get()
@@ -88,5 +88,5 @@ func EnqueueSpec(c gospec.Context) {
 		})
 	})
 
-	Config.namespace = was
+	Config.Namespace = was
 }
