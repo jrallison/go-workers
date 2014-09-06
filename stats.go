@@ -4,7 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 )
+
+type stats struct {
+	Processed int         `json:"processed"`
+	Failed    int         `json:"failed"`
+	Jobs      interface{} `json:"jobs"`
+}
 
 func Stats(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -28,10 +35,29 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	stats := map[string]interface{}{
-		"processed": 0,
-		"failed":    0,
-		"jobs":      jobs,
+	stats := stats{
+		0,
+		0,
+		jobs,
+	}
+
+	conn := Config.Pool.Get()
+	defer conn.Close()
+
+	conn.Send("multi")
+	conn.Send("get", Config.Namespace+"stat:processed")
+	conn.Send("get", Config.Namespace+"stat:failed")
+	r, err := conn.Do("exec")
+
+	if err != nil {
+		Logger.Println("couldn't retrieve stats:", err)
+	}
+
+	results := r.([]interface{})
+
+	if len(results) == 2 {
+		stats.Processed, _ = strconv.Atoi(string(results[0].([]byte)))
+		stats.Failed, _ = strconv.Atoi(string(results[1].([]byte)))
 	}
 
 	body, _ := json.MarshalIndent(stats, "", "  ")
