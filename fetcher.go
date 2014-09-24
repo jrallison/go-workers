@@ -11,6 +11,7 @@ type Fetcher interface {
 	Queue() string
 	Fetch()
 	Acknowledge(*Msg)
+	Ready() chan bool
 	Messages() chan *Msg
 	Close()
 	Closed() bool
@@ -19,6 +20,7 @@ type Fetcher interface {
 func NewFetch(queue string, messages chan *Msg) Fetcher {
 	return &fetch{
 		queue,
+		make(chan bool),
 		messages,
 		make(chan bool),
 		make(chan bool),
@@ -28,6 +30,7 @@ func NewFetch(queue string, messages chan *Msg) Fetcher {
 
 type fetch struct {
 	queue    string
+	ready    chan bool
 	messages chan *Msg
 	stop     chan bool
 	exit     chan bool
@@ -42,6 +45,7 @@ func (f *fetch) processOldMessages() {
 	messages := f.inprogressMessages()
 
 	for _, message := range messages {
+		<-f.Ready()
 		f.sendMessage(message)
 	}
 }
@@ -56,6 +60,8 @@ func (f *fetch) Fetch() {
 			if f.Closed() {
 				break
 			}
+
+			<-f.Ready()
 
 			(func() {
 				conn := Config.Pool.Get()
@@ -107,6 +113,10 @@ func (f *fetch) Acknowledge(message *Msg) {
 
 func (f *fetch) Messages() chan *Msg {
 	return f.messages
+}
+
+func (f *fetch) Ready() chan bool {
+	return f.ready
 }
 
 func (f *fetch) Close() {

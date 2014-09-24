@@ -33,6 +33,7 @@ func FetchSpec(c gospec.Context) {
 
 			conn.Do("lpush", "queue:fetchQueue2", message.ToJson())
 
+			fetch.Ready() <- true
 			message := <-fetch.Messages()
 
 			c.Expect(message, Equals, message)
@@ -51,6 +52,7 @@ func FetchSpec(c gospec.Context) {
 
 			conn.Do("lpush", "queue:fetchQueue3", message.ToJson())
 
+			fetch.Ready() <- true
 			<-fetch.Messages()
 
 			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue3:1:inprogress"))
@@ -70,6 +72,7 @@ func FetchSpec(c gospec.Context) {
 
 			conn.Do("lpush", "queue:fetchQueue4", message.ToJson())
 
+			fetch.Ready() <- true
 			<-fetch.Messages()
 
 			fetch.Acknowledge(message)
@@ -93,6 +96,7 @@ func FetchSpec(c gospec.Context) {
 
 			conn.Do("lpush", "queue:fetchQueue5", json)
 
+			fetch.Ready() <- true
 			<-fetch.Messages()
 
 			fetch.Acknowledge(message)
@@ -116,8 +120,11 @@ func FetchSpec(c gospec.Context) {
 
 			fetch := buildFetch("fetchQueue6")
 
+			fetch.Ready() <- true
 			c.Expect(<-fetch.Messages(), Equals, message2)
+			fetch.Ready() <- true
 			c.Expect(<-fetch.Messages(), Equals, message)
+			fetch.Ready() <- true
 			c.Expect(<-fetch.Messages(), Equals, message3)
 
 			fetch.Acknowledge(message)

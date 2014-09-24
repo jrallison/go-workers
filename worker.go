@@ -34,6 +34,9 @@ func (w *worker) work(messages chan *Msg) {
 
 			w.startedAt = 0
 			w.currentMsg = nil
+		case w.manager.fetch.Ready() <- true:
+			// Signaled to fetcher that we're
+			// ready to accept a message
 		case <-w.stop:
 			w.exit <- true
 			break
