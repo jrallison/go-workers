@@ -33,11 +33,11 @@ func generateJid() string {
 	return fmt.Sprintf("%x", b)
 }
 
-func Enqueue(queue, class string, args interface{}) error {
+func Enqueue(queue, class string, args interface{}) (string, error) {
 	return EnqueueWithOptions(queue, class, args, EnqueueOptions{})
 }
 
-func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) error {
+func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, error) {
 	conn := Config.Pool.Get()
 	defer conn.Close()
 
@@ -51,14 +51,19 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 	}
 	bytes, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
 	if err != nil {
-		return err
+		return "", err
 	}
 	queue = Config.Namespace + "queue:" + queue
 	_, err = conn.Do("rpush", queue, bytes)
-	return err
+	if err != nil {
+		return "", err
+	}
+
+	return data.Jid, nil
+	return "", err
 }
