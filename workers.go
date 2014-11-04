@@ -12,7 +12,7 @@ const (
 	SCHEDULED_JOBS_KEY = "schedule"
 )
 
-var Logger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
+var Logger WorkersLogger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
 
 var managers = make(map[string]*manager)
 var schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
