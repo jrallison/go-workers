@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"time"
@@ -21,7 +22,7 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 
 			if retry(message) {
 				message.Set("queue", queue)
-				message.Set("error_message", e)
+				message.Set("error_message", fmt.Sprintf("%v", e))
 				retryCount := incrementRetry(message)
 
 				_, err := conn.Do(
