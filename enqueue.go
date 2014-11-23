@@ -37,10 +37,15 @@ func Enqueue(queue, class string, args interface{}) (string, error) {
 	return EnqueueWithOptions(queue, class, args, EnqueueOptions{})
 }
 
-func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, error) {
-	conn := Config.Pool.Get()
-	defer conn.Close()
+func EnqueueIn(queue, class string, in int64, args interface{}) (string, error) {
+	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: float64(time.Now().Unix() + in)})
+}
 
+func EnqueueAt(queue, class string, at int64, args interface{}) (string, error) {
+	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: float64(at)})
+}
+
+func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, error) {
 	data := EnqueueData{
 		Queue:          queue,
 		Class:          class,
@@ -49,10 +54,19 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		EnqueuedAt:     float64(time.Now().UnixNano()) / 1000000000,
 		EnqueueOptions: opts,
 	}
+
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return "", err
 	}
+
+	if float64(time.Now().Unix()) < opts.At {
+		err := enqueueAt(data.At, bytes)
+		return data.Jid, err
+	}
+
+	conn := Config.Pool.Get()
+	defer conn.Close()
 
 	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
 	if err != nil {
@@ -65,5 +79,19 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 	}
 
 	return data.Jid, nil
-	return "", err
+}
+
+func enqueueAt(at float64, bytes []byte) error {
+	conn := Config.Pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do(
+		"zadd",
+		Config.Namespace+SCHEDULED_JOBS_KEY, at, bytes,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
