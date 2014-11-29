@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/jrallison/go-workers"
+	"github.com/Scalingo/go-workers"
 )
 
 func main() {
@@ -18,10 +19,11 @@ func main() {
 	workers.Process("myqueue", Task, 10)
 	go workers.Run()
 	workers.Enqueue("myqueue", "Task", map[string]interface{}{"foo": "bar"})
-	workers.EnqueueIn("myqueue", "Task", 2, map[string]interface{}{"foo": "bar"})
+	workers.EnqueueIn("myqueue", "Task", 2.0, map[string]interface{}{"foo": "bar"})
 
 	time.Sleep(20 * time.Second)
 }
 
 func Task(msg *workers.Msg) {
+	fmt.Println(msg)
 }

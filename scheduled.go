@@ -34,7 +34,7 @@ func (s *scheduled) quit() {
 func (s *scheduled) poll() {
 	conn := Config.Pool.Get()
 
-	now := time.Now().Unix()
+	now := nowNano()
 
 	for _, key := range s.keys {
 		key = Config.Namespace + key

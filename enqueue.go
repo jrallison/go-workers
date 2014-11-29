@@ -37,12 +37,12 @@ func Enqueue(queue, class string, args interface{}) (string, error) {
 	return EnqueueWithOptions(queue, class, args, EnqueueOptions{})
 }
 
-func EnqueueIn(queue, class string, in int64, args interface{}) (string, error) {
-	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: float64(time.Now().Unix() + in)})
+func EnqueueIn(queue, class string, in float64, args interface{}) (string, error) {
+	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: nowNano() + in})
 }
 
-func EnqueueAt(queue, class string, at int64, args interface{}) (string, error) {
-	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: float64(at)})
+func EnqueueAt(queue, class string, at time.Time, args interface{}) (string, error) {
+	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: toNano(at)})
 }
 
 func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, error) {
@@ -60,7 +60,7 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return "", err
 	}
 
-	if float64(time.Now().Unix()) < opts.At {
+	if nowNano() < opts.At {
 		err := enqueueAt(data.At, bytes)
 		return data.Jid, err
 	}
@@ -94,4 +94,12 @@ func enqueueAt(at float64, bytes []byte) error {
 	}
 
 	return nil
+}
+
+func toNano(t time.Time) float64 {
+	return float64(t.UnixNano()) / 1000000.0
+}
+
+func nowNano() float64 {
+	return toNano(time.Now())
 }
