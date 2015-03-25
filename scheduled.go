@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	POLL_INTERVAL = 15
+	POLL_INTERVAL = 500
 )
 
 type scheduled struct {
@@ -55,7 +55,7 @@ func (s *scheduled) poll(continuing bool) {
 
 	conn.Close()
 	if continuing {
-		time.Sleep(POLL_INTERVAL * time.Second)
+		time.Sleep(POLL_INTERVAL * time.Millisecond)
 		s.poll(true)
 	}
 }
