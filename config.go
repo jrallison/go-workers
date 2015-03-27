@@ -7,10 +7,11 @@ import (
 )
 
 type config struct {
-	processId string
-	Namespace string
-	Pool      *redis.Pool
-	Fetch     func(queue string) Fetcher
+	processId    string
+	Namespace    string
+	PollInterval int
+	Pool         *redis.Pool
+	Fetch        func(queue string) Fetcher
 }
 
 var Config *config
@@ -18,6 +19,7 @@ var Config *config
 func Configure(options map[string]string) {
 	var poolSize int
 	var namespace string
+	var pollInterval int
 
 	if options["server"] == "" {
 		panic("Configure requires a 'server' option, which identifies a Redis instance")
@@ -31,12 +33,23 @@ func Configure(options map[string]string) {
 	if options["namespace"] != "" {
 		namespace = options["namespace"] + ":"
 	}
+	if options["poll_interval"] != "" {
+		pollInterval = 15
+	} else {
+		pollIntervalInt, err := strconv.Atoi(options["poll_interval"])
+		if err != nil {
+			pollInterval = 15
+		} else {
+			pollInterval = pollIntervalInt
+		}
+	}
 
 	poolSize, _ = strconv.Atoi(options["pool"])
 
 	Config = &config{
 		options["process"],
 		namespace,
+		pollInterval,
 		&redis.Pool{
 			MaxIdle:     poolSize,
 			IdleTimeout: 240 * time.Second,

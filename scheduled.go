@@ -7,10 +7,6 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-const (
-	POLL_INTERVAL = 15
-)
-
 type scheduled struct {
 	keys   []string
 	closed bool
@@ -55,7 +51,7 @@ func (s *scheduled) poll(continuing bool) {
 
 	conn.Close()
 	if continuing {
-		time.Sleep(POLL_INTERVAL * time.Second)
+		time.Sleep(time.Duration(Config.PollInterval) * time.Second)
 		s.poll(true)
 	}
 }
