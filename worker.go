@@ -51,7 +51,7 @@ func (w *worker) process(message *Msg) (acknowledge bool) {
 		recover()
 	}()
 
-	return Middleware.call(w.manager.queueName(), message, func() {
+	return w.manager.mids.call(w.manager.queueName(), message, func() {
 		w.manager.job(message)
 	})
 }
