@@ -56,8 +56,12 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	results := r.([]interface{})
 
 	if len(results) == 2 {
-		stats.Processed, _ = strconv.Atoi(string(results[0].([]byte)))
-		stats.Failed, _ = strconv.Atoi(string(results[1].([]byte)))
+		if results[0] != nil {
+			stats.Processed, _ = strconv.Atoi(string(results[0].([]byte)))
+		}
+		if results[1] != nil {
+			stats.Failed, _ = strconv.Atoi(string(results[1].([]byte)))
+		}
 	}
 
 	body, _ := json.MarshalIndent(stats, "", "  ")
