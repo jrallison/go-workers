@@ -68,7 +68,8 @@ func quitManagers() {
 }
 
 func waitForExit() {
-	for _, manager := range managers {
+	for queue, manager := range managers {
 		manager.Wait()
+		delete(managers, queue)
 	}
 }
