@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 
@@ -45,9 +44,6 @@ func Configure(options map[string]string) {
 			pollInterval = pollIntervalInt
 		}
 	}
-
-	fmt.Println("*******************")
-	fmt.Println(pollInterval)
 
 	poolSize, _ = strconv.Atoi(options["pool"])
 
