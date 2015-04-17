@@ -73,7 +73,7 @@ func (f *fetch) Fetch() {
 					// If redis returns null, the queue is empty. Just ignore the error.
 					if err.Error() != "redigo: nil returned" {
 						Logger.Println("ERR: ", err)
-						time.Sleep(1 * time.Second)
+						time.Sleep(time.Duration(Config.PollInterval) * time.Microsecond)
 					}
 				} else {
 					c <- message

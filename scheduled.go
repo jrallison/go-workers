@@ -43,7 +43,7 @@ func (s *scheduled) poll(continuing bool) {
 
 				message, _ := NewMsg(messages[0])
 
-				if removed, _ := redis.Bool(conn.Do("zrem", key, messages[0])); removed {
+				if removed, err := redis.Int(conn.Do("zrem", key, messages[0])); removed == 1 && err == nil {
 					queue, _ := message.Get("queue").String()
 					queue = strings.TrimPrefix(queue, Config.Namespace)
 					conn.Do("lpush", Config.Namespace+"queue:"+queue, message.ToJson())
