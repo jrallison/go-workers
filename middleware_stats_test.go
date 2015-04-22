@@ -30,6 +30,14 @@ func MiddlewareStatsSpec(c gospec.Context) {
 		c.Expect(count, Equals, 0)
 		c.Expect(dayCount, Equals, 0)
 
+		ntime, _ := redis.Int(conn.Do("hget", "prod:stat:average_time", "n"))
+		avgtime, _ := redis.Float64(conn.Do("hget", "prod:stat:average_time", "avg"))
+		dayAvgtime, _ := redis.Float64(conn.Do("hget", "prod:stat:average_time:"+time.Now().UTC().Format(layout), "avg"))
+
+		c.Expect(ntime, Equals, 0)
+		c.Expect(avgtime, Equals, float64(0))
+		c.Expect(dayAvgtime, Equals, float64(0))
+
 		worker.process(message)
 
 		count, _ = redis.Int(conn.Do("get", "prod:stat:processed"))
@@ -37,6 +45,14 @@ func MiddlewareStatsSpec(c gospec.Context) {
 
 		c.Expect(count, Equals, 1)
 		c.Expect(dayCount, Equals, 1)
+
+		ntime, _ = redis.Int(conn.Do("hget", "prod:stat:average_time", "n"))
+		avgtime, _ = redis.Float64(conn.Do("hget", "prod:stat:average_time", "avg"))
+		dayAvgtime, _ = redis.Float64(conn.Do("hget", "prod:stat:average_time:"+time.Now().UTC().Format(layout), "avg"))
+
+		c.Expect(ntime, Equals, 1)
+		c.Expect(avgtime > 0, IsTrue)
+		c.Expect(dayAvgtime > 0, IsTrue)
 	})
 
 	c.Specify("failed job", func() {

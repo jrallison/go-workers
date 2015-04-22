@@ -8,9 +8,11 @@ import (
 )
 
 type stats struct {
-	Processed int         `json:"processed"`
-	Failed    int         `json:"failed"`
-	Jobs      interface{} `json:"jobs"`
+	Processed    int         `json:"processed"`
+	Failed       int         `json:"failed"`
+	Jobs         interface{} `json:"jobs"`
+	AverageTime  float64     `json:"average_time"`
+	AverageTimeN int         `json:"average_time_n"`
 }
 
 func Stats(w http.ResponseWriter, req *http.Request) {
@@ -39,6 +41,8 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 		0,
 		0,
 		jobs,
+		0,
+		0,
 	}
 
 	conn := Config.Pool.Get()
@@ -47,6 +51,8 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	conn.Send("multi")
 	conn.Send("get", Config.Namespace+"stat:processed")
 	conn.Send("get", Config.Namespace+"stat:failed")
+	conn.Send("hget", Config.Namespace+"stat:average_time", "n")
+	conn.Send("hget", Config.Namespace+"stat:average_time", "avg")
 	r, err := conn.Do("exec")
 
 	if err != nil {
@@ -61,6 +67,12 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 		}
 		if results[1] != nil {
 			stats.Failed, _ = strconv.Atoi(string(results[1].([]byte)))
+		}
+		if results[2] != nil {
+			stats.AverageTimeN, _ = strconv.Atoi(string(results[2].([]byte)))
+		}
+		if results[3] != nil {
+			stats.AverageTime, _ = strconv.ParseFloat(string(results[3].([]byte)), 64)
 		}
 	}
 
