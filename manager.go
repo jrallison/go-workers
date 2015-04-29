@@ -14,6 +14,7 @@ type manager struct {
 	confirm     chan *Msg
 	stop        chan bool
 	exit        chan bool
+	mids        *Middlewares
 	*sync.WaitGroup
 }
 
@@ -81,7 +82,16 @@ func (m *manager) queueName() string {
 	return strings.Replace(m.queue, "queue:", "", 1)
 }
 
-func newManager(queue string, job jobFunc, concurrency int) *manager {
+func newManager(queue string, job jobFunc, concurrency int, mids ...Action) *manager {
+	var customMids *Middlewares
+	if len(mids) == 0 {
+		customMids = Middleware
+	} else {
+		customMids = NewMiddleware(Middleware.actions...)
+		for _, m := range mids {
+			customMids.Append(m)
+		}
+	}
 	m := &manager{
 		Config.Namespace + "queue:" + queue,
 		nil,
@@ -91,6 +101,7 @@ func newManager(queue string, job jobFunc, concurrency int) *manager {
 		make(chan *Msg),
 		make(chan bool),
 		make(chan bool),
+		customMids,
 		&sync.WaitGroup{},
 	}
 

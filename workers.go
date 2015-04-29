@@ -24,8 +24,8 @@ var Middleware = NewMiddleware(
 	&MiddlewareStats{},
 )
 
-func Process(queue string, job jobFunc, concurrency int) {
-	managers[queue] = newManager(queue, job, concurrency)
+func Process(queue string, job jobFunc, concurrency int, mids ...Action) {
+	managers[queue] = newManager(queue, job, concurrency, mids...)
 }
 
 func Run() {
@@ -68,7 +68,8 @@ func quitManagers() {
 }
 
 func waitForExit() {
-	for _, manager := range managers {
+	for queue, manager := range managers {
 		manager.Wait()
+		delete(managers, queue)
 	}
 }
