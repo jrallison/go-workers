@@ -14,18 +14,24 @@ type scheduled struct {
 }
 
 func (s *scheduled) start() {
-	go s.poll(true)
+	go (func() {
+		for {
+			if s.closed {
+				return
+			}
+
+			s.poll()
+
+			time.Sleep(time.Duration(Config.PollInterval) * time.Second)
+		}
+	})()
 }
 
 func (s *scheduled) quit() {
 	s.closed = true
 }
 
-func (s *scheduled) poll(continuing bool) {
-	if s.closed {
-		return
-	}
-
+func (s *scheduled) poll() {
 	conn := Config.Pool.Get()
 
 	now := time.Now().Unix()
@@ -50,10 +56,6 @@ func (s *scheduled) poll(continuing bool) {
 	}
 
 	conn.Close()
-	if continuing {
-		time.Sleep(time.Duration(Config.PollInterval) * time.Second)
-		s.poll(true)
-	}
 }
 
 func newScheduled(keys ...string) *scheduled {

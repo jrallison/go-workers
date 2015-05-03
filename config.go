@@ -1,9 +1,10 @@
 package workers
 
 import (
-	"github.com/garyburd/redigo/redis"
 	"strconv"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 type config struct {
@@ -33,15 +34,10 @@ func Configure(options map[string]string) {
 	if options["namespace"] != "" {
 		namespace = options["namespace"] + ":"
 	}
-	if options["poll_interval"] != "" {
-		pollInterval = 15
+	if seconds, err := strconv.Atoi(options["poll_interval"]); err == nil {
+		pollInterval = seconds
 	} else {
-		pollIntervalInt, err := strconv.Atoi(options["poll_interval"])
-		if err != nil {
-			pollInterval = 15
-		} else {
-			pollInterval = pollIntervalInt
-		}
+		pollInterval = 15
 	}
 
 	poolSize, _ = strconv.Atoi(options["pool"])
