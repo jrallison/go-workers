@@ -100,6 +100,10 @@ func toNano(t time.Time) float64 {
 	return float64(t.UnixNano()) / 1000000.0
 }
 
+func durationToNano(d time.Duration) float64 {
+	return float64(d.Nanoseconds())
+}
+
 func nowNano() float64 {
 	return toNano(time.Now())
 }

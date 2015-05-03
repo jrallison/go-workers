@@ -18,15 +18,15 @@ func ScheduledSpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		now := time.Now().Unix()
+		now := nowNano()
 
 		message1, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar1\"}")
 		message2, _ := NewMsg("{\"queue\":\"myqueue\",\"foo\":\"bar2\"}")
 		message3, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar3\"}")
 
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-60, message1.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-10, message2.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now+60, message3.ToJson())
+		conn.Do("zadd", "prod:"+RETRY_KEY, now-durationToNano(time.Minute), message1.ToJson())
+		conn.Do("zadd", "prod:"+RETRY_KEY, now-durationToNano(10*time.Second), message2.ToJson())
+		conn.Do("zadd", "prod:"+RETRY_KEY, now+durationToNano(time.Minute), message3.ToJson())
 
 		scheduled.poll()
 
