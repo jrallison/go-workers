@@ -68,4 +68,23 @@ func ConfigSpec(c gospec.Context) {
 
 		c.Expect(Config.Namespace, Equals, "prod:")
 	})
+
+	c.Specify("defaults poll interval to 15 seconds", func() {
+		Configure(map[string]string{
+			"server":  "localhost:6379",
+			"process": "1",
+		})
+
+		c.Expect(Config.PollInterval, Equals, 15)
+	})
+
+	c.Specify("allows customization of poll interval", func() {
+		Configure(map[string]string{
+			"server":        "localhost:6379",
+			"process":       "1",
+			"poll_interval": "1",
+		})
+
+		c.Expect(Config.PollInterval, Equals, 1)
+	})
 }
