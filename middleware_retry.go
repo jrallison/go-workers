@@ -25,7 +25,7 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 				message.Set("error_message", fmt.Sprintf("%v", e))
 				retryCount := incrementRetry(message)
 
-				nanoSecondsToWait := durationToNano(
+				waitDuration := durationToSecondsWithNanoPrecision(
 					time.Duration(
 						secondsToDelay(retryCount),
 					) * time.Second,
@@ -34,7 +34,7 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 				_, err := conn.Do(
 					"zadd",
 					Config.Namespace+RETRY_KEY,
-					nowNano()+nanoSecondsToWait,
+					nowToSecondsWithNanoPrecision()+waitDuration,
 					message.ToJson(),
 				)
 

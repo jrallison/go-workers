@@ -2,7 +2,6 @@ package workers
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
@@ -70,7 +69,7 @@ func EnqueueSpec(c gospec.Context) {
 
 			ea := result["enqueued_at"].(float64)
 			c.Expect(ea, Not(Equals), 0)
-			c.Expect(ea, IsWithin(0.1), float64(time.Now().UnixNano())/1000000000)
+			c.Expect(ea, IsWithin(0.1), nowToSecondsWithNanoPrecision())
 		})
 
 		c.Specify("has retry and retry_count when set", func() {
