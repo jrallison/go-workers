@@ -106,7 +106,7 @@ func timeToSecondsWithNanoPrecision(t time.Time) float64 {
 }
 
 func durationToSecondsWithNanoPrecision(d time.Duration) float64 {
-	return float64(d.Nanoseconds())
+	return float64(d.Nanoseconds()) / NanoSecondPrecision
 }
 
 func nowToSecondsWithNanoPrecision() float64 {
