@@ -2,10 +2,10 @@ package workers
 
 import (
 	"encoding/json"
+
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
-	"time"
 )
 
 func EnqueueSpec(c gospec.Context) {
@@ -69,7 +69,7 @@ func EnqueueSpec(c gospec.Context) {
 
 			ea := result["enqueued_at"].(float64)
 			c.Expect(ea, Not(Equals), 0)
-			c.Expect(ea, IsWithin(0.1), float64(time.Now().UnixNano())/1000000000)
+			c.Expect(ea, IsWithin(0.1), nowToSecondsWithNanoPrecision())
 		})
 
 		c.Specify("has retry and retry_count when set", func() {
@@ -85,6 +85,36 @@ func EnqueueSpec(c gospec.Context) {
 
 			retryCount := int(result["retry_count"].(float64))
 			c.Expect(retryCount, Equals, 13)
+		})
+	})
+
+	c.Specify("EnqueueIn", func() {
+		scheduleQueue := "prod:" + SCHEDULED_JOBS_KEY
+		conn := Config.Pool.Get()
+		defer conn.Close()
+
+		c.Specify("has added a job in the scheduled queue", func() {
+			_, err := EnqueueIn("enqueuein1", "Compare", 10, map[string]interface{}{"foo": "bar"})
+			c.Expect(err, Equals, nil)
+
+			scheduledCount, _ := redis.Int(conn.Do("zcard", scheduleQueue))
+			c.Expect(scheduledCount, Equals, 1)
+
+			conn.Do("del", scheduleQueue)
+		})
+
+		c.Specify("has the correct 'queue'", func() {
+			_, err := EnqueueIn("enqueuein2", "Compare", 10, map[string]interface{}{"foo": "bar"})
+			c.Expect(err, Equals, nil)
+
+			var data EnqueueData
+			elem, err := conn.Do("zrange", scheduleQueue, 0, -1)
+			bytes, err := redis.Bytes(elem.([]interface{})[0], err)
+			json.Unmarshal(bytes, &data)
+
+			c.Expect(data.Queue, Equals, "enqueuein2")
+
+			conn.Do("del", scheduleQueue)
 		})
 	})
 

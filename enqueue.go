@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+const (
+	NanoSecondPrecision = 1000000000.0
+)
+
 type EnqueueData struct {
 	Queue      string      `json:"queue,omitempty"`
 	Class      string      `json:"class"`
@@ -34,25 +38,40 @@ func generateJid() string {
 }
 
 func Enqueue(queue, class string, args interface{}) (string, error) {
-	return EnqueueWithOptions(queue, class, args, EnqueueOptions{})
+	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: nowToSecondsWithNanoPrecision()})
+}
+
+func EnqueueIn(queue, class string, in float64, args interface{}) (string, error) {
+	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: nowToSecondsWithNanoPrecision() + in})
+}
+
+func EnqueueAt(queue, class string, at time.Time, args interface{}) (string, error) {
+	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: timeToSecondsWithNanoPrecision(at)})
 }
 
 func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, error) {
-	conn := Config.Pool.Get()
-	defer conn.Close()
-
+	now := nowToSecondsWithNanoPrecision()
 	data := EnqueueData{
 		Queue:          queue,
 		Class:          class,
 		Args:           args,
 		Jid:            generateJid(),
-		EnqueuedAt:     float64(time.Now().UnixNano()) / 1000000000,
+		EnqueuedAt:     now,
 		EnqueueOptions: opts,
 	}
+
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		return "", err
 	}
+
+	if now < opts.At {
+		err := enqueueAt(data.At, bytes)
+		return data.Jid, err
+	}
+
+	conn := Config.Pool.Get()
+	defer conn.Close()
 
 	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
 	if err != nil {
@@ -65,5 +84,31 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 	}
 
 	return data.Jid, nil
-	return "", err
+}
+
+func enqueueAt(at float64, bytes []byte) error {
+	conn := Config.Pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do(
+		"zadd",
+		Config.Namespace+SCHEDULED_JOBS_KEY, at, bytes,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func timeToSecondsWithNanoPrecision(t time.Time) float64 {
+	return float64(t.UnixNano()) / NanoSecondPrecision
+}
+
+func durationToSecondsWithNanoPrecision(d time.Duration) float64 {
+	return float64(d.Nanoseconds()) / NanoSecondPrecision
+}
+
+func nowToSecondsWithNanoPrecision() float64 {
+	return timeToSecondsWithNanoPrecision(time.Now())
 }

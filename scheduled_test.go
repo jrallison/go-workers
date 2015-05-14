@@ -1,8 +1,6 @@
 package workers
 
 import (
-	"time"
-
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
@@ -18,15 +16,15 @@ func ScheduledSpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		now := time.Now().Unix()
+		now := nowToSecondsWithNanoPrecision()
 
 		message1, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar1\"}")
 		message2, _ := NewMsg("{\"queue\":\"myqueue\",\"foo\":\"bar2\"}")
 		message3, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar3\"}")
 
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-60, message1.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-10, message2.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now+60, message3.ToJson())
+		conn.Do("zadd", "prod:"+RETRY_KEY, now-60.0, message1.ToJson())
+		conn.Do("zadd", "prod:"+RETRY_KEY, now-10.0, message2.ToJson())
+		conn.Do("zadd", "prod:"+RETRY_KEY, now+60.0, message3.ToJson())
 
 		scheduled.poll()
 
