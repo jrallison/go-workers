@@ -15,6 +15,7 @@ type stats struct {
 
 func Stats(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	jobs := make(map[string][]*map[string]interface{})
 
