@@ -11,6 +11,7 @@ type manager struct {
 	job         jobFunc
 	concurrency int
 	workers     []*worker
+	workersM    *sync.Mutex
 	confirm     chan *Msg
 	stop        chan bool
 	exit        chan bool
@@ -62,19 +63,22 @@ func (m *manager) manage() {
 }
 
 func (m *manager) loadWorkers() {
+	m.workersM.Lock()
 	for i := 0; i < m.concurrency; i++ {
 		m.workers[i] = newWorker(m)
 		m.workers[i].start()
 	}
+	m.workersM.Unlock()
 }
 
 func (m *manager) processing() (count int) {
+	m.workersM.Lock()
 	for _, worker := range m.workers {
 		if worker.processing() {
 			count++
 		}
 	}
-
+	m.workersM.Unlock()
 	return
 }
 
@@ -98,6 +102,7 @@ func newManager(queue string, job jobFunc, concurrency int, mids ...Action) *man
 		job,
 		concurrency,
 		make([]*worker, concurrency),
+		&sync.Mutex{},
 		make(chan *Msg),
 		make(chan bool),
 		make(chan bool),
