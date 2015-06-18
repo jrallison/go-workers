@@ -34,9 +34,11 @@ func (m *manager) quit() {
 	Logger.Println("quitting queue", m.queueName(), "(waiting for", m.processing(), "/", len(m.workers), "workers).")
 	m.prepare()
 
+	m.workersM.Lock()
 	for _, worker := range m.workers {
 		worker.quit()
 	}
+	m.workersM.Unlock()
 
 	m.stop <- true
 	<-m.exit
