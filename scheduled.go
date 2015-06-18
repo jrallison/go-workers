@@ -51,7 +51,7 @@ func (s *scheduled) poll() {
 				queue, _ := message.Get("queue").String()
 				queue = strings.TrimPrefix(queue, Config.Namespace)
 				message.Set("enqueued_at", nowToSecondsWithNanoPrecision())
-				conn.Do("lpush", Config.Namespace+"queue:"+queue, message.ToJson())
+				conn.Do("lpush", queueKey(queue), message.ToJson())
 			}
 		}
 	}

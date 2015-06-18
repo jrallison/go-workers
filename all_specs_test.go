@@ -1,8 +1,9 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
 	"testing"
+
+	"github.com/customerio/gospec"
 )
 
 // You will need to list every spec in a TestXxx method like this,
@@ -38,6 +39,7 @@ func TestAllSpecs(t *testing.T) {
 	r.AddSpec(ManagerSpec)
 	r.AddSpec(ScheduledSpec)
 	r.AddSpec(EnqueueSpec)
+	r.AddSpec(QueueSpec)
 	r.AddSpec(MiddlewareSpec)
 	r.AddSpec(MiddlewareRetrySpec)
 	r.AddSpec(MiddlewareStatsSpec)

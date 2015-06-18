@@ -86,6 +86,18 @@ func EnqueueSpec(c gospec.Context) {
 			retryCount := int(result["retry_count"].(float64))
 			c.Expect(retryCount, Equals, 13)
 		})
+
+		c.Specify("returns queueSize", func() {
+			_, queueSize, _ := Enqueue("enqueue7", "Compare", []string{"foo", "bar"})
+			c.Expect(queueSize, Equals, 1)
+		})
+
+		c.Specify("returns queueSize with the actual size of the queue", func() {
+			for i := 1; i <= 10; i++ {
+				_, queueSize, _ := Enqueue("enqueue8", "Compare", []string{"foo", "bar"})
+				c.Expect(queueSize, Equals, i)
+			}
+		})
 	})
 
 	c.Specify("EnqueueIn", func() {
@@ -94,7 +106,7 @@ func EnqueueSpec(c gospec.Context) {
 		defer conn.Close()
 
 		c.Specify("has added a job in the scheduled queue", func() {
-			_, err := EnqueueIn("enqueuein1", "Compare", 10, map[string]interface{}{"foo": "bar"})
+			_, _, err := EnqueueIn("enqueuein1", "Compare", 10, map[string]interface{}{"foo": "bar"})
 			c.Expect(err, Equals, nil)
 
 			scheduledCount, _ := redis.Int(conn.Do("zcard", scheduleQueue))
@@ -104,7 +116,7 @@ func EnqueueSpec(c gospec.Context) {
 		})
 
 		c.Specify("has the correct 'queue'", func() {
-			_, err := EnqueueIn("enqueuein2", "Compare", 10, map[string]interface{}{"foo": "bar"})
+			_, _, err := EnqueueIn("enqueuein2", "Compare", 10, map[string]interface{}{"foo": "bar"})
 			c.Expect(err, Equals, nil)
 
 			var data EnqueueData
@@ -115,6 +127,13 @@ func EnqueueSpec(c gospec.Context) {
 			c.Expect(data.Queue, Equals, "enqueuein2")
 
 			conn.Do("del", scheduleQueue)
+		})
+
+		c.Specify("returns the number of scheduled jobs", func() {
+			for i := 1; i <= 10; i++ {
+				_, scheduledJobQueueSize, _ := EnqueueIn("enqueuein3", "Compare", 10, []string{"foo", "bar"})
+				c.Expect(scheduledJobQueueSize, Equals, i)
+			}
 		})
 	})
 

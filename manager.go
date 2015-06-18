@@ -93,7 +93,7 @@ func newManager(queue string, job jobFunc, concurrency int, mids ...Action) *man
 		}
 	}
 	m := &manager{
-		Config.Namespace + "queue:" + queue,
+		queueKey(queue),
 		nil,
 		job,
 		concurrency,
