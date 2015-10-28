@@ -56,9 +56,10 @@ func (f *fetch) Fetch() {
 	f.processOldMessages()
 
 	go (func(c chan string) {
+	Lfetch:
 		for {
 			if f.Closed() {
-				break
+				break Lfetch
 			}
 
 			<-f.Ready()
@@ -82,6 +83,7 @@ func (f *fetch) Fetch() {
 		}
 	})(messages)
 
+Lmessage:
 	for {
 		select {
 		case message := <-messages:
@@ -89,7 +91,7 @@ func (f *fetch) Fetch() {
 		case <-f.stop:
 			f.closed = true
 			f.exit <- true
-			break
+			break Lmessage
 		}
 	}
 }
