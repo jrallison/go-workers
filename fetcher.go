@@ -56,10 +56,9 @@ func (f *fetch) Fetch() {
 	f.processOldMessages()
 
 	go (func(c chan string) {
-	Lfetch:
 		for {
 			if f.Closed() {
-				break Lfetch
+				break
 			}
 
 			<-f.Ready()
