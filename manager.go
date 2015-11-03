@@ -37,9 +37,11 @@ func (m *manager) quit() {
 		worker.quit()
 	}
 
+	Logger.Println("quitting queue", m.queueName(), " stoped all workers.")
 	m.stop <- true
 	<-m.exit
 
+	Logger.Println("quitting queue", m.queueName(), " before down.")
 	m.Done()
 }
 

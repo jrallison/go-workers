@@ -42,7 +42,7 @@ func Start() {
 func Quit() {
 	quitManagers()
 	schedule.quit()
-	waitForExit()
+	// waitForExit()
 }
 
 func StatsServer(port int) {
