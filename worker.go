@@ -22,6 +22,7 @@ func (w *worker) quit() {
 }
 
 func (w *worker) work(messages chan *Msg) {
+Lwork:
 	for {
 		select {
 		case message := <-messages:
@@ -39,9 +40,10 @@ func (w *worker) work(messages chan *Msg) {
 			// ready to accept a message
 		case <-w.stop:
 			w.exit <- true
-			break
+			break Lwork
 		}
 	}
+
 }
 
 func (w *worker) process(message *Msg) (acknowledge bool) {
