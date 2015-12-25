@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/LYY/go-workers.png)](https://travis-ci.org/LYY/go-workers)
+[![Build Status](https://travis-ci.org/LYY/go-workers.svg?branch=master)](https://travis-ci.org/LYY/go-workers)
 [![GoDoc](https://godoc.org/github.com/LYY/go-workers?status.png)](https://godoc.org/github.com/LYY/go-workers)
 
 [Sidekiq](http://sidekiq.org/) compatible
