@@ -9,15 +9,17 @@ import (
 
 type scheduled struct {
 	keys   []string
-	closed bool
+	closed chan bool
 	exit   chan bool
 }
 
 func (s *scheduled) start() {
 	go (func() {
 		for {
-			if s.closed {
+			select {
+			case <-s.closed:
 				return
+			default:
 			}
 
 			s.poll()
@@ -28,7 +30,7 @@ func (s *scheduled) start() {
 }
 
 func (s *scheduled) quit() {
-	s.closed = true
+	close(s.closed)
 }
 
 func (s *scheduled) poll() {
@@ -60,5 +62,5 @@ func (s *scheduled) poll() {
 }
 
 func newScheduled(keys ...string) *scheduled {
-	return &scheduled{keys, false, make(chan bool)}
+	return &scheduled{keys, make(chan bool), make(chan bool)}
 }
