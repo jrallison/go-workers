@@ -39,7 +39,7 @@ func (w *worker) work(messages chan *Msg) {
 			// ready to accept a message
 		case <-w.stop:
 			w.exit <- true
-			break
+			return
 		}
 	}
 }
