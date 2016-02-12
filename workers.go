@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
 
 const (
@@ -17,6 +18,8 @@ var Logger WorkersLogger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicros
 var managers = make(map[string]*manager)
 var schedule *scheduled
 var control = make(map[string]chan string)
+var access sync.Mutex
+var started bool
 
 var Middleware = NewMiddleware(
 	&MiddlewareLogging{},
@@ -25,6 +28,9 @@ var Middleware = NewMiddleware(
 )
 
 func Process(queue string, job jobFunc, concurrency int, mids ...Action) {
+	access.Lock()
+	defer access.Unlock()
+
 	managers[queue] = newManager(queue, job, concurrency, mids...)
 }
 
@@ -35,19 +41,32 @@ func Run() {
 }
 
 func Start() {
-	if schedule == nil {
-		schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
+	access.Lock()
+	defer access.Unlock()
+
+	if started {
+		return
 	}
 
-	schedule.start()
+	startSchedule()
 	startManagers()
+
+	started = true
 }
 
 func Quit() {
+	access.Lock()
+	defer access.Unlock()
+
+	if !started {
+		return
+	}
+
 	quitManagers()
-	schedule.quit()
-	schedule = nil
+	quitSchedule()
 	waitForExit()
+
+	started = false
 }
 
 func StatsServer(port int) {
@@ -57,6 +76,21 @@ func StatsServer(port int) {
 
 	if err := http.ListenAndServe(fmt.Sprint(":", port), nil); err != nil {
 		Logger.Println(err)
+	}
+}
+
+func startSchedule() {
+	if schedule == nil {
+		schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
+	}
+
+	schedule.start()
+}
+
+func quitSchedule() {
+	if schedule != nil {
+		schedule.quit()
+		schedule = nil
 	}
 }
 

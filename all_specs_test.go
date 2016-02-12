@@ -1,8 +1,9 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
 	"testing"
+
+	"github.com/customerio/gospec"
 )
 
 // You will need to list every spec in a TestXxx method like this,

@@ -1,8 +1,6 @@
 package workers
 
-import (
-	"github.com/customerio/gospec"
-)
+import "github.com/customerio/gospec"
 
 var called chan bool
 
