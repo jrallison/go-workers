@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,6 +39,19 @@ func Run() {
 	Start()
 	go handleSignals()
 	waitForExit()
+}
+
+func ResetManagers() error {
+	access.Lock()
+	defer access.Unlock()
+
+	if started {
+		return errors.New("Cannot reset worker managers while workers are running")
+	}
+
+	managers = make(map[string]*manager)
+
+	return nil
 }
 
 func Start() {
