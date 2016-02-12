@@ -15,7 +15,7 @@ const (
 var Logger WorkersLogger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
 
 var managers = make(map[string]*manager)
-var schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
+var schedule *scheduled
 var control = make(map[string]chan string)
 
 var Middleware = NewMiddleware(
@@ -35,6 +35,10 @@ func Run() {
 }
 
 func Start() {
+	if schedule == nil {
+		schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
+	}
+
 	schedule.start()
 	startManagers()
 }
@@ -42,6 +46,7 @@ func Start() {
 func Quit() {
 	quitManagers()
 	schedule.quit()
+	schedule = nil
 	waitForExit()
 }
 

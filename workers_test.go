@@ -24,5 +24,21 @@ func WorkersSpec(c gospec.Context) {
 
 			Quit()
 		})
+
+		c.Specify("allows starting and stopping multiple times", func() {
+			called = make(chan bool)
+
+			Process("myqueue", myJob, 10)
+
+			Start()
+			Quit()
+
+			Start()
+
+			Enqueue("myqueue", "Add", []int{1, 2})
+			<-called
+
+			Quit()
+		})
 	})
 }
