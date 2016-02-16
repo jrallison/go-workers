@@ -1,6 +1,11 @@
 package workers
 
-import "github.com/customerio/gospec"
+import (
+	"reflect"
+
+	"github.com/customerio/gospec"
+	. "github.com/customerio/gospec"
+)
 
 var called chan bool
 
@@ -37,6 +42,54 @@ func WorkersSpec(c gospec.Context) {
 			<-called
 
 			Quit()
+		})
+
+		c.Specify("runs beforeStart hooks", func() {
+			hooks := []string{}
+
+			BeforeStart(func() {
+				hooks = append(hooks, "1")
+			})
+			BeforeStart(func() {
+				hooks = append(hooks, "2")
+			})
+			BeforeStart(func() {
+				hooks = append(hooks, "3")
+			})
+
+			Start()
+
+			c.Expect(reflect.DeepEqual(hooks, []string{"1", "2", "3"}), IsTrue)
+
+			Quit()
+
+			// Clear out global hooks variable
+			beforeStart = nil
+		})
+
+		c.Specify("runs beforeStart hooks", func() {
+			hooks := []string{}
+
+			DuringDrain(func() {
+				hooks = append(hooks, "1")
+			})
+			DuringDrain(func() {
+				hooks = append(hooks, "2")
+			})
+			DuringDrain(func() {
+				hooks = append(hooks, "3")
+			})
+
+			Start()
+
+			c.Expect(reflect.DeepEqual(hooks, []string{}), IsTrue)
+
+			Quit()
+
+			c.Expect(reflect.DeepEqual(hooks, []string{"1", "2", "3"}), IsTrue)
+
+			// Clear out global hooks variable
+			duringDrain = nil
 		})
 	})
 }

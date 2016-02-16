@@ -62,6 +62,7 @@ func Start() {
 		return
 	}
 
+	runHooks(beforeStart)
 	startSchedule()
 	startManagers()
 
@@ -78,6 +79,7 @@ func Quit() {
 
 	quitManagers()
 	quitSchedule()
+	runHooks(duringDrain)
 	waitForExit()
 
 	started = false
