@@ -1,10 +1,12 @@
 package workers
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
 
 const (
@@ -15,8 +17,10 @@ const (
 var Logger WorkersLogger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
 
 var managers = make(map[string]*manager)
-var schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
+var schedule *scheduled
 var control = make(map[string]chan string)
+var access sync.Mutex
+var started bool
 
 var Middleware = NewMiddleware(
 	&MiddlewareLogging{},
@@ -25,6 +29,9 @@ var Middleware = NewMiddleware(
 )
 
 func Process(queue string, job jobFunc, concurrency int, mids ...Action) {
+	access.Lock()
+	defer access.Unlock()
+
 	managers[queue] = newManager(queue, job, concurrency, mids...)
 }
 
@@ -34,15 +41,48 @@ func Run() {
 	waitForExit()
 }
 
+func ResetManagers() error {
+	access.Lock()
+	defer access.Unlock()
+
+	if started {
+		return errors.New("Cannot reset worker managers while workers are running")
+	}
+
+	managers = make(map[string]*manager)
+
+	return nil
+}
+
 func Start() {
-	schedule.start()
+	access.Lock()
+	defer access.Unlock()
+
+	if started {
+		return
+	}
+
+	runHooks(beforeStart)
+	startSchedule()
 	startManagers()
+
+	started = true
 }
 
 func Quit() {
+	access.Lock()
+	defer access.Unlock()
+
+	if !started {
+		return
+	}
+
 	quitManagers()
-	schedule.quit()
+	quitSchedule()
+	runHooks(duringDrain)
 	waitForExit()
+
+	started = false
 }
 
 func StatsServer(port int) {
@@ -52,6 +92,21 @@ func StatsServer(port int) {
 
 	if err := http.ListenAndServe(fmt.Sprint(":", port), nil); err != nil {
 		Logger.Println(err)
+	}
+}
+
+func startSchedule() {
+	if schedule == nil {
+		schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
+	}
+
+	schedule.start()
+}
+
+func quitSchedule() {
+	if schedule != nil {
+		schedule.quit()
+		schedule = nil
 	}
 }
 

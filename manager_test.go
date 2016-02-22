@@ -2,21 +2,37 @@ package workers
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
 )
 
 type customMid struct {
-	Trace []string
+	trace []string
 	Base  string
+	mutex sync.Mutex
 }
 
 func (m *customMid) Call(queue string, message *Msg, next func() bool) (result bool) {
-	m.Trace = append(m.Trace, m.Base+"1")
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.trace = append(m.trace, m.Base+"1")
 	result = next()
-	m.Trace = append(m.Trace, m.Base+"2")
+	m.trace = append(m.trace, m.Base+"2")
 	return
+}
+
+func (m *customMid) Trace() []string {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	t := make([]string, len(m.trace))
+	copy(t, m.trace)
+
+	return t
 }
 
 func ManagerSpec(c gospec.Context) {
@@ -51,7 +67,7 @@ func ManagerSpec(c gospec.Context) {
 		})
 
 		c.Specify("per-manager middlewares create separate middleware chains", func() {
-			mid1 := customMid{[]string{}, "0"}
+			mid1 := customMid{Base: "0"}
 			manager := newManager("myqueue", testJob, 10, &mid1)
 			c.Expect(manager.mids, Not(Equals), Middleware)
 			c.Expect(len(manager.mids.actions), Equals, len(Middleware.actions)+1)
@@ -84,9 +100,9 @@ func ManagerSpec(c gospec.Context) {
 		})
 
 		c.Specify("per-manager middlwares are called separately, global middleware is called in each manager", func() {
-			mid1 := customMid{[]string{}, "1"}
-			mid2 := customMid{[]string{}, "2"}
-			mid3 := customMid{[]string{}, "3"}
+			mid1 := customMid{Base: "1"}
+			mid2 := customMid{Base: "2"}
+			mid3 := customMid{Base: "3"}
 
 			oldMiddleware := Middleware
 			Middleware = NewMiddleware()
@@ -111,15 +127,15 @@ func ManagerSpec(c gospec.Context) {
 			Middleware = oldMiddleware
 
 			c.Expect(
-				arrayCompare(mid1.Trace, []string{"11", "12", "11", "12", "11", "12"}),
+				arrayCompare(mid1.Trace(), []string{"11", "12", "11", "12", "11", "12"}),
 				IsTrue,
 			)
 			c.Expect(
-				arrayCompare(mid2.Trace, []string{"21", "22"}),
+				arrayCompare(mid2.Trace(), []string{"21", "22"}),
 				IsTrue,
 			)
 			c.Expect(
-				arrayCompare(mid3.Trace, []string{"31", "32"}),
+				arrayCompare(mid3.Trace(), []string{"31", "32"}),
 				IsTrue,
 			)
 

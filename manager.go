@@ -21,6 +21,7 @@ type manager struct {
 
 func (m *manager) start() {
 	m.Add(1)
+	m.loadWorkers()
 	go m.manage()
 }
 
@@ -43,13 +44,13 @@ func (m *manager) quit() {
 	m.stop <- true
 	<-m.exit
 
+	m.reset()
+
 	m.Done()
 }
 
 func (m *manager) manage() {
 	Logger.Println("processing queue", m.queueName(), "with", m.concurrency, "workers.")
-
-	m.loadWorkers()
 
 	go m.fetch.Fetch()
 
@@ -82,12 +83,15 @@ func (m *manager) processing() (count int) {
 		}
 	}
 	m.workersM.Unlock()
-
 	return
 }
 
 func (m *manager) queueName() string {
 	return strings.Replace(m.queue, "queue:", "", 1)
+}
+
+func (m *manager) reset() {
+	m.fetch = Config.Fetch(m.queue)
 }
 
 func newManager(queue string, job jobFunc, concurrency int, mids ...Action) *manager {

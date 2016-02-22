@@ -16,7 +16,6 @@ type scheduled struct {
 func (s *scheduled) start() {
 	go (func() {
 		for {
-
 			select {
 			case <-s.closed:
 				return
