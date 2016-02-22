@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/LYY/go-workers.svg?branch=master)](https://travis-ci.org/LYY/go-workers)
-[![GoDoc](https://godoc.org/github.com/LYY/go-workers?status.png)](https://godoc.org/github.com/LYY/go-workers)
+[![Build Status](https://travis-ci.org/jrallison/go-workers.png)](https://travis-ci.org/jrallison/go-workers)
+[![GoDoc](https://godoc.org/github.com/jrallison/go-workers?status.png)](https://godoc.org/github.com/jrallison/go-workers)
 
 [Sidekiq](http://sidekiq.org/) compatible
 background workers in [golang](http://golang.org/).
@@ -18,7 +18,7 @@ Example usage:
 package main
 
 import (
-	"github.com/LYY/go-workers"
+  "github.com/jrallison/go-workers"
 )
 
 func myJob(message *workers.Msg) {
