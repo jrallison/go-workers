@@ -12,24 +12,27 @@ type Fetcher interface {
 	Fetch()
 	Acknowledge(*Msg)
 	Ready() chan bool
+	FinishedWork() chan bool
 	Messages() chan *Msg
 	Close()
 	Closed() bool
 }
 
 type fetch struct {
-	queue    string
-	ready    chan bool
-	messages chan *Msg
-	stop     chan bool
-	exit     chan bool
-	closed   chan bool
+	queue        string
+	ready        chan bool
+	finishedwork chan bool
+	messages     chan *Msg
+	stop         chan bool
+	exit         chan bool
+	closed       chan bool
 }
 
 func NewFetch(queue string, messages chan *Msg, ready chan bool) Fetcher {
 	return &fetch{
 		queue,
 		ready,
+		make(chan bool),
 		messages,
 		make(chan bool),
 		make(chan bool),
@@ -124,6 +127,10 @@ func (f *fetch) Messages() chan *Msg {
 
 func (f *fetch) Ready() chan bool {
 	return f.ready
+}
+
+func (f *fetch) FinishedWork() chan bool {
+	return f.finishedwork
 }
 
 func (f *fetch) Close() {
