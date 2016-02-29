@@ -15,7 +15,7 @@ type customMid struct {
 	mutex sync.Mutex
 }
 
-func (m *customMid) Call(queue string, message *Msg, next func() bool) (result bool) {
+func (m *customMid) Call(queue string, messages Msgs, next func() bool) (result bool) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -38,8 +38,10 @@ func (m *customMid) Trace() []string {
 func ManagerSpec(c gospec.Context) {
 	processed := make(chan *Args)
 
-	testJob := (func(message *Msg) {
-		processed <- message.Args()
+	testJob := (func(messages Msgs) {
+		for _, m := range messages {
+			processed <- m.Args()
+		}
 	})
 
 	was := Config.Namespace

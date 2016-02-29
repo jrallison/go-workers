@@ -23,7 +23,7 @@ func FetchSpec(c gospec.Context) {
 	})
 
 	c.Specify("Fetch", func() {
-		message, _ := NewMsg("{\"foo\":\"bar\"}")
+		messages, _ := NewMsgs([]string{"{\"foo\":\"bar\"}"})
 
 		c.Specify("it puts messages from the queues on the messages channel", func() {
 			fetch := buildFetch("fetchQueue2")
@@ -31,12 +31,16 @@ func FetchSpec(c gospec.Context) {
 			conn := Config.Pool.Get()
 			defer conn.Close()
 
-			conn.Do("lpush", "queue:fetchQueue2", message.ToJson())
+			for _, m := range messages {
+				conn.Do("lpush", "queue:fetchQueue2", m.ToJson())
+			}
 
 			fetch.Ready() <- true
-			message := <-fetch.Messages()
+			found := <-fetch.Messages()
 
-			c.Expect(message, Equals, message)
+			c.Expect(len(messages), Equals, 1)
+			c.Expect(len(found), Equals, 1)
+			c.Expect(messages[0].original, Equals, found[0].original)
 
 			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue2"))
 			c.Expect(len, Equals, 0)
@@ -50,7 +54,9 @@ func FetchSpec(c gospec.Context) {
 			conn := Config.Pool.Get()
 			defer conn.Close()
 
-			conn.Do("lpush", "queue:fetchQueue3", message.ToJson())
+			for _, m := range messages {
+				conn.Do("lpush", "queue:fetchQueue3", m.ToJson())
+			}
 
 			fetch.Ready() <- true
 			<-fetch.Messages()
@@ -58,8 +64,8 @@ func FetchSpec(c gospec.Context) {
 			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue3:1:inprogress"))
 			c.Expect(len, Equals, 1)
 
-			messages, _ := redis.Strings(conn.Do("lrange", "queue:fetchQueue3:1:inprogress", 0, -1))
-			c.Expect(messages[0], Equals, message.ToJson())
+			found, _ := redis.Strings(conn.Do("lrange", "queue:fetchQueue3:1:inprogress", 0, -1))
+			c.Expect(found[0], Equals, messages[0].ToJson())
 
 			fetch.Close()
 		})
@@ -70,12 +76,14 @@ func FetchSpec(c gospec.Context) {
 			conn := Config.Pool.Get()
 			defer conn.Close()
 
-			conn.Do("lpush", "queue:fetchQueue4", message.ToJson())
+			for _, m := range messages {
+				conn.Do("lpush", "queue:fetchQueue4", m.ToJson())
+			}
 
 			fetch.Ready() <- true
 			<-fetch.Messages()
 
-			fetch.Acknowledge(message)
+			fetch.Acknowledge(messages)
 
 			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue4:1:inprogress"))
 			c.Expect(len, Equals, 0)
@@ -85,9 +93,9 @@ func FetchSpec(c gospec.Context) {
 
 		c.Specify("removes in progress message when serialized differently", func() {
 			json := "{\"foo\":\"bar\",\"args\":[]}"
-			message, _ := NewMsg(json)
+			messages, _ := NewMsgs([]string{json})
 
-			c.Expect(json, Not(Equals), message.ToJson())
+			c.Expect(json, Not(Equals), messages[0].ToJson())
 
 			fetch := buildFetch("fetchQueue5")
 
@@ -99,7 +107,7 @@ func FetchSpec(c gospec.Context) {
 			fetch.Ready() <- true
 			<-fetch.Messages()
 
-			fetch.Acknowledge(message)
+			fetch.Acknowledge(messages)
 
 			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue5:1:inprogress"))
 			c.Expect(len, Equals, 0)
@@ -108,28 +116,26 @@ func FetchSpec(c gospec.Context) {
 		})
 
 		c.Specify("refires any messages left in progress from prior instance", func() {
-			message2, _ := NewMsg("{\"foo\":\"bar2\"}")
-			message3, _ := NewMsg("{\"foo\":\"bar3\"}")
+			msgs, _ := NewMsgs([]string{"{\"foo\":\"bar2\"}", "{\"foo\":\"bar3\"}"})
 
 			conn := Config.Pool.Get()
 			defer conn.Close()
 
-			conn.Do("lpush", "queue:fetchQueue6:1:inprogress", message.ToJson())
-			conn.Do("lpush", "queue:fetchQueue6:1:inprogress", message2.ToJson())
-			conn.Do("lpush", "queue:fetchQueue6", message3.ToJson())
+			conn.Do("lpush", "queue:fetchQueue6:1:inprogress", messages[0].ToJson())
+			conn.Do("lpush", "queue:fetchQueue6:1:inprogress", msgs[0].ToJson())
+			conn.Do("lpush", "queue:fetchQueue6", msgs[1].ToJson())
 
 			fetch := buildFetch("fetchQueue6")
 
 			fetch.Ready() <- true
-			c.Expect(<-fetch.Messages(), Equals, message2)
+			c.Expect((<-fetch.Messages())[0].original, Equals, msgs[0].original)
 			fetch.Ready() <- true
-			c.Expect(<-fetch.Messages(), Equals, message)
+			c.Expect((<-fetch.Messages())[0].original, Equals, messages[0].original)
 			fetch.Ready() <- true
-			c.Expect(<-fetch.Messages(), Equals, message3)
+			c.Expect((<-fetch.Messages())[0].original, Equals, msgs[1].original)
 
-			fetch.Acknowledge(message)
-			fetch.Acknowledge(message2)
-			fetch.Acknowledge(message3)
+			fetch.Acknowledge(messages)
+			fetch.Acknowledge(msgs)
 
 			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue6:1:inprogress"))
 			c.Expect(len, Equals, 0)

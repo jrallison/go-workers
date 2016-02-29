@@ -1,9 +1,29 @@
 package workers
 
 import (
-	"github.com/bitly/go-simplejson"
+	"fmt"
 	"reflect"
+
+	"github.com/bitly/go-simplejson"
 )
+
+type Msgs []*Msg
+
+func NewMsgs(messages []string) ([]*Msg, error) {
+	msgs := make(Msgs, 0, len(messages))
+
+	for _, m := range messages {
+		msg, err := NewMsg(m)
+
+		if err == nil {
+			msgs = append(msgs, msg)
+		} else {
+			return nil, fmt.Errorf("Couldn't create message from %v: %v", m, err)
+		}
+	}
+
+	return msgs, nil
+}
 
 type data struct {
 	*simplejson.Json

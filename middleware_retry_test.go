@@ -1,14 +1,15 @@
 package workers
 
 import (
+	"time"
+
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
-	"time"
 )
 
 func MiddlewareRetrySpec(c gospec.Context) {
-	var panicingJob = (func(message *Msg) {
+	var panicingJob = (func(message Msgs) {
 		panic("AHHHH")
 	})
 
@@ -24,24 +25,24 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	Config.Namespace = "prod:"
 
 	c.Specify("puts messages in retry queue when they fail", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":true}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
-		c.Expect(retries[0], Equals, message.ToJson())
+		c.Expect(retries[0], Equals, messages[0].ToJson())
 	})
 
 	c.Specify("allows disabling retries", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":false}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":false}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
@@ -52,10 +53,10 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("doesn't retry by default", func() {
-		message, _ := NewMsg("{\"jid\":\"2\"}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\"}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
@@ -66,38 +67,38 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("allows numeric retries", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":5}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":5}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
-		c.Expect(retries[0], Equals, message.ToJson())
+		c.Expect(retries[0], Equals, messages[0].ToJson())
 	})
 
 	c.Specify("handles new failed message", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":true}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
-		message, _ = NewMsg(retries[0])
+		messages, _ = NewMsgs([]string{retries[0]})
 
-		queue, _ := message.Get("queue").String()
-		error_message, _ := message.Get("error_message").String()
-		error_class, _ := message.Get("error_class").String()
-		retry_count, _ := message.Get("retry_count").Int()
-		error_backtrace, _ := message.Get("error_backtrace").String()
-		failed_at, _ := message.Get("failed_at").String()
+		queue, _ := messages[0].Get("queue").String()
+		error_message, _ := messages[0].Get("error_message").String()
+		error_class, _ := messages[0].Get("error_class").String()
+		retry_count, _ := messages[0].Get("retry_count").Int()
+		error_backtrace, _ := messages[0].Get("error_backtrace").String()
+		failed_at, _ := messages[0].Get("failed_at").String()
 
 		c.Expect(queue, Equals, "myqueue")
 		c.Expect(error_message, Equals, "AHHHH")
@@ -108,23 +109,23 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("handles recurring failed message", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":10}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":true,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":10}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
-		message, _ = NewMsg(retries[0])
+		messages, _ = NewMsgs(retries)
 
-		queue, _ := message.Get("queue").String()
-		error_message, _ := message.Get("error_message").String()
-		retry_count, _ := message.Get("retry_count").Int()
-		failed_at, _ := message.Get("failed_at").String()
-		retried_at, _ := message.Get("retried_at").String()
+		queue, _ := messages[0].Get("queue").String()
+		error_message, _ := messages[0].Get("error_message").String()
+		retry_count, _ := messages[0].Get("retry_count").Int()
+		failed_at, _ := messages[0].Get("failed_at").String()
+		retried_at, _ := messages[0].Get("retried_at").String()
 
 		c.Expect(queue, Equals, "myqueue")
 		c.Expect(error_message, Equals, "AHHHH")
@@ -134,23 +135,23 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("handles recurring failed message with customized max", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":10,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":8}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":10,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":8}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
-		message, _ = NewMsg(retries[0])
+		messages, _ = NewMsgs(retries)
 
-		queue, _ := message.Get("queue").String()
-		error_message, _ := message.Get("error_message").String()
-		retry_count, _ := message.Get("retry_count").Int()
-		failed_at, _ := message.Get("failed_at").String()
-		retried_at, _ := message.Get("retried_at").String()
+		queue, _ := messages[0].Get("queue").String()
+		error_message, _ := messages[0].Get("error_message").String()
+		retry_count, _ := messages[0].Get("retry_count").Int()
+		failed_at, _ := messages[0].Get("failed_at").String()
+		retried_at, _ := messages[0].Get("retried_at").String()
 
 		c.Expect(queue, Equals, "myqueue")
 		c.Expect(error_message, Equals, "AHHHH")
@@ -160,10 +161,10 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("doesn't retry after default number of retries", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_count\":25}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":true,\"retry_count\":25}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()
@@ -174,10 +175,10 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("doesn't retry after customized number of retries", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":3,\"retry_count\":3}")
+		messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":3,\"retry_count\":3}"})
 
-		wares.call("myqueue", message, func() {
-			worker.process(message)
+		wares.call("myqueue", messages, func() {
+			worker.process(messages)
 		})
 
 		conn := Config.Pool.Get()

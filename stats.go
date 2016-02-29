@@ -24,12 +24,12 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 		jobs[queue] = make([]*map[string]interface{}, 0)
 
 		for _, worker := range m.workers {
-			message := worker.currentMsg
+			messages := worker.currentMsgs
 			startedAt := worker.startedAt
 
-			if message != nil && startedAt > 0 {
+			if messages != nil && startedAt > 0 {
 				jobs[queue] = append(jobs[queue], &map[string]interface{}{
-					"message":    message,
+					"messages":   messages,
 					"started_at": startedAt,
 				})
 			}

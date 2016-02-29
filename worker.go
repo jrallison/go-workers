@@ -6,11 +6,11 @@ import (
 )
 
 type worker struct {
-	manager    *manager
-	stop       chan bool
-	exit       chan bool
-	currentMsg *Msg
-	startedAt  int64
+	manager     *manager
+	stop        chan bool
+	exit        chan bool
+	currentMsgs Msgs
+	startedAt   int64
 }
 
 func (w *worker) start() {
@@ -22,19 +22,19 @@ func (w *worker) quit() {
 	<-w.exit
 }
 
-func (w *worker) work(messages chan *Msg) {
+func (w *worker) work(messages chan Msgs) {
 	for {
 		select {
-		case message := <-messages:
+		case msgs := <-messages:
 			atomic.StoreInt64(&w.startedAt, time.Now().UTC().Unix())
-			w.currentMsg = message
+			w.currentMsgs = msgs
 
-			if w.process(message) {
-				w.manager.confirm <- message
+			if w.process(msgs) {
+				w.manager.confirm <- msgs
 			}
 
 			atomic.StoreInt64(&w.startedAt, 0)
-			w.currentMsg = nil
+			w.currentMsgs = nil
 
 			// Attempt to tell fetcher we're finished.
 			// Can be used when the fetcher has slept due
@@ -54,15 +54,15 @@ func (w *worker) work(messages chan *Msg) {
 	}
 }
 
-func (w *worker) process(message *Msg) (acknowledge bool) {
+func (w *worker) process(messages Msgs) (acknowledge bool) {
 	acknowledge = true
 
 	defer func() {
 		recover()
 	}()
 
-	return w.manager.mids.call(w.manager.queueName(), message, func() {
-		w.manager.job(message)
+	return w.manager.mids.call(w.manager.queueName(), messages, func() {
+		w.manager.job(messages)
 	})
 }
 
