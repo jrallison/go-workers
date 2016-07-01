@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"runtime/debug"
 	"time"
 )
 
@@ -17,12 +18,13 @@ type MiddlewareRetry struct{}
 func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (acknowledge bool) {
 	defer func() {
 		if e := recover(); e != nil {
+
 			conn := Config.Pool.Get()
 			defer conn.Close()
 
 			if retry(message) {
 				message.Set("queue", queue)
-				message.Set("error_message", fmt.Sprintf("%v", e))
+				message.Set("error_message", fmt.Sprintf("%v\n%s", e, debug.Stack()))
 				retryCount := incrementRetry(message)
 
 				waitDuration := durationToSecondsWithNanoPrecision(
@@ -37,7 +39,6 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 					nowToSecondsWithNanoPrecision()+waitDuration,
 					message.ToJson(),
 				)
-
 				// If we can't add the job to the retry queue,
 				// then we shouldn't acknowledge the job, otherwise
 				// it'll disappear into the void.

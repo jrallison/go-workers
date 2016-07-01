@@ -11,6 +11,8 @@ type stats struct {
 	Processed int         `json:"processed"`
 	Failed    int         `json:"failed"`
 	Jobs      interface{} `json:"jobs"`
+	Enqueued  interface{} `json:"enqueued"`
+	Retries   int64       `json:"retries"`
 }
 
 func Stats(w http.ResponseWriter, req *http.Request) {
@@ -18,11 +20,12 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	jobs := make(map[string][]*map[string]interface{})
+	enqueued := make(map[string]string)
 
 	for _, m := range managers {
 		queue := m.queueName()
 		jobs[queue] = make([]*map[string]interface{}, 0)
-
+		enqueued[queue] = ""
 		for _, worker := range m.workers {
 			message := worker.currentMsg
 			startedAt := worker.startedAt
@@ -40,6 +43,8 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 		0,
 		0,
 		jobs,
+		enqueued,
+		0,
 	}
 
 	conn := Config.Pool.Get()
@@ -48,6 +53,12 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	conn.Send("multi")
 	conn.Send("get", Config.Namespace+"stat:processed")
 	conn.Send("get", Config.Namespace+"stat:failed")
+	conn.Send("zcard", Config.Namespace+RETRY_KEY)
+
+	for key, _ := range enqueued {
+		conn.Send("llen", fmt.Sprintf("%squeue:%s", Config.Namespace, key))
+	}
+
 	r, err := conn.Do("exec")
 
 	if err != nil {
@@ -55,13 +66,29 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	}
 
 	results := r.([]interface{})
+	if len(results) == (3 + len(enqueued)) {
+		for index, result := range results {
+			if index == 0 && result != nil {
+				stats.Processed, _ = strconv.Atoi(string(result.([]byte)))
+				continue
+			}
+			if index == 1 && result != nil {
+				stats.Failed, _ = strconv.Atoi(string(result.([]byte)))
+				continue
+			}
 
-	if len(results) == 2 {
-		if results[0] != nil {
-			stats.Processed, _ = strconv.Atoi(string(results[0].([]byte)))
-		}
-		if results[1] != nil {
-			stats.Failed, _ = strconv.Atoi(string(results[1].([]byte)))
+			if index == 2 && result != nil {
+				stats.Retries = result.(int64)
+				continue
+			}
+
+			queueIndex := 0
+			for key, _ := range enqueued {
+				if queueIndex == (index - 3) {
+					enqueued[key] = fmt.Sprintf("%d", result.(int64))
+				}
+				queueIndex++
+			}
 		}
 	}
 
