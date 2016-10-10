@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"github.com/garyburd/redigo/redis"
 	"time"
 )
 
@@ -14,11 +15,40 @@ func (l *MiddlewareStats) Call(queue string, message *Msg, next func() bool) (ac
 		}
 	}()
 
+	start := time.Now()
+
 	acknowledge = next()
 
+	timeTook := time.Now().Sub(start).Seconds()
+
+	incrementAverage("average_time", timeTook)
 	incrementStats("processed")
 
 	return
+}
+
+func incrementAverage(metric string, val float64) {
+	conn := Config.Pool.Get()
+	defer conn.Close()
+
+	key := Config.Namespace + "stat:" + metric
+
+	today := time.Now().UTC().Format("2006-01-02")
+	conn.Send("multi")
+
+	n, _ := redis.Int64(conn.Do("hget", key, "n"))
+	conn.Send("hincrby", key, "n", 1)
+	conn.Send("hincrbyfloat", key, "avg", val/float64(n+1))
+
+	key = key + ":" + today
+
+	n, _ = redis.Int64(conn.Do("hget", key, "n"))
+	conn.Send("hincrby", key, "n", 1)
+	conn.Send("hincrbyfloat", key, "avg", val/float64(n+1))
+
+	if _, err := conn.Do("exec"); err != nil {
+		Logger.Println("couldn't save stats:", err)
+	}
 }
 
 func incrementStats(metric string) {
