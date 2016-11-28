@@ -116,7 +116,6 @@ func FetchSpec(c gospec.Context) {
 			fetch.Close()
 		})
 
-		// XXX:
 		c.Specify("removes in progress message when serialized differently", func() {
 			json := "{\"foo\":\"bar\",\"args\":[]}"
 			messages, _ := NewMsgs([]string{json})
