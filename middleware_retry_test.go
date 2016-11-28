@@ -93,19 +93,12 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		messages, _ = NewMsgs([]string{retries[0]})
 
-		queue, _ := messages[0].Get("queue").String()
-		error_message, _ := messages[0].Get("error_message").String()
-		error_class, _ := messages[0].Get("error_class").String()
-		retry_count, _ := messages[0].Get("retry_count").Int()
-		error_backtrace, _ := messages[0].Get("error_backtrace").String()
-		failed_at, _ := messages[0].Get("failed_at").String()
-
-		c.Expect(queue, Equals, "myqueue")
-		c.Expect(error_message, Equals, "AHHHH")
-		c.Expect(error_class, Equals, "")
-		c.Expect(retry_count, Equals, 0)
-		c.Expect(error_backtrace, Equals, "")
-		c.Expect(failed_at, Equals, time.Now().UTC().Format(layout))
+		c.Expect(messages[0].queue, Equals, "myqueue")
+		c.Expect(messages[0].error, Equals, "AHHHH")
+		//c.Expect(messages[0].errorClass, Equals, "")
+		c.Expect(messages[0].retryCount, Equals, 0)
+		//c.Expect(messages[0].errorBacktrace, Equals, "")
+		c.Expect(messages[0].failedAt, Equals, time.Now().UTC().Format(layout))
 	})
 
 	c.Specify("handles recurring failed message", func() {
@@ -121,17 +114,11 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		messages, _ = NewMsgs(retries)
 
-		queue, _ := messages[0].Get("queue").String()
-		error_message, _ := messages[0].Get("error_message").String()
-		retry_count, _ := messages[0].Get("retry_count").Int()
-		failed_at, _ := messages[0].Get("failed_at").String()
-		retried_at, _ := messages[0].Get("retried_at").String()
-
-		c.Expect(queue, Equals, "myqueue")
-		c.Expect(error_message, Equals, "AHHHH")
-		c.Expect(retry_count, Equals, 11)
-		c.Expect(failed_at, Equals, "2013-07-20 14:03:42 UTC")
-		c.Expect(retried_at, Equals, time.Now().UTC().Format(layout))
+		c.Expect(messages[0].queue, Equals, "myqueue")
+		c.Expect(messages[0].error, Equals, "AHHHH")
+		c.Expect(messages[0].retryCount, Equals, 11)
+		c.Expect(messages[0].failedAt, Equals, "2013-07-20 14:03:42 UTC")
+		c.Expect(messages[0].retriedAt, Equals, time.Now().UTC().Format(layout))
 	})
 
 	c.Specify("handles recurring failed message with customized max", func() {
@@ -147,17 +134,11 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
 		messages, _ = NewMsgs(retries)
 
-		queue, _ := messages[0].Get("queue").String()
-		error_message, _ := messages[0].Get("error_message").String()
-		retry_count, _ := messages[0].Get("retry_count").Int()
-		failed_at, _ := messages[0].Get("failed_at").String()
-		retried_at, _ := messages[0].Get("retried_at").String()
-
-		c.Expect(queue, Equals, "myqueue")
-		c.Expect(error_message, Equals, "AHHHH")
-		c.Expect(retry_count, Equals, 9)
-		c.Expect(failed_at, Equals, "2013-07-20 14:03:42 UTC")
-		c.Expect(retried_at, Equals, time.Now().UTC().Format(layout))
+		c.Expect(messages[0].queue, Equals, "myqueue")
+		c.Expect(messages[0].error, Equals, "AHHHH")
+		c.Expect(messages[0].retryCount, Equals, 9)
+		c.Expect(messages[0].failedAt, Equals, "2013-07-20 14:03:42 UTC")
+		c.Expect(messages[0].retriedAt, Equals, time.Now().UTC().Format(layout))
 	})
 
 	c.Specify("doesn't retry after default number of retries", func() {
