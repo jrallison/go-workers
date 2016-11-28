@@ -21,7 +21,7 @@ import (
 	"github.com/jrallison/go-workers"
 )
 
-func myJob(message *workers.Msg) {
+func myJob(message workers.Msgs) {
   // do something with your message
   // message.Jid()
   // message.Args() is a wrapper around go-simplejson (http://godoc.org/github.com/bitly/go-simplejson)
@@ -29,7 +29,7 @@ func myJob(message *workers.Msg) {
 
 type myMiddleware struct{}
 
-func (r *myMiddleware) Call(queue string, message *workers.Msg, next func() bool) (acknowledge bool) {
+func (r *myMiddleware) Call(queue string, message workers.Msgs, next func() bool) (acknowledge bool) {
   // do something before each message is processed
   acknowledge = next()
   // do something after each message is processed

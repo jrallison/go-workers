@@ -16,15 +16,14 @@ type scheduled struct {
 func (s *scheduled) start() {
 	go (func() {
 		for {
+			s.poll()
+
 			select {
 			case <-s.closed:
 				return
-			default:
+			case <-time.After(time.Duration(Config.PollInterval) * time.Second):
 			}
 
-			s.poll()
-
-			time.Sleep(time.Duration(Config.PollInterval) * time.Second)
 		}
 	})()
 }
@@ -47,12 +46,11 @@ func (s *scheduled) poll() {
 				break
 			}
 
-			message, _ := NewMsg(messages[0])
+			message, _ := NewMsgFromString(messages[0])
 
 			if removed, _ := redis.Bool(conn.Do("zrem", key, messages[0])); removed {
-				queue, _ := message.Get("queue").String()
-				queue = strings.TrimPrefix(queue, Config.Namespace)
-				message.Set("enqueued_at", nowToSecondsWithNanoPrecision())
+				queue := strings.TrimPrefix(message.queue, Config.Namespace)
+				message.enqueuedAt = nowToSecondsWithNanoPrecision()
 				conn.Do("lpush", Config.Namespace+"queue:"+queue, message.ToJson())
 			}
 		}

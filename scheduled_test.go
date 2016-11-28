@@ -18,9 +18,10 @@ func ScheduledSpec(c gospec.Context) {
 
 		now := nowToSecondsWithNanoPrecision()
 
-		message1, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar1\"}")
-		message2, _ := NewMsg("{\"queue\":\"myqueue\",\"foo\":\"bar2\"}")
-		message3, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar3\"}")
+		// XXX:
+		message1, _ := NewMsgFromString("{\"queue\":\"default\",\"args\":{\"foo\":\"bar1\"}}")
+		message2, _ := NewMsgFromString("{\"queue\":\"myqueue\",\"foo\":\"bar2\"}")
+		message3, _ := NewMsgFromString("{\"queue\":\"default\",\"foo\":\"bar3\"}")
 
 		conn.Do("zadd", "prod:"+RETRY_KEY, now-60.0, message1.ToJson())
 		conn.Do("zadd", "prod:"+RETRY_KEY, now-10.0, message2.ToJson())

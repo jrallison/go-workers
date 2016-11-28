@@ -12,24 +12,24 @@ var failMiddlewareCalled bool
 
 type testMiddleware struct{}
 
-func (l *testMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+func (l *testMiddleware) Call(queue string, messages Msgs, next func() bool) (result bool) {
 	testMiddlewareCalled = true
 	return next()
 }
 
 type failMiddleware struct{}
 
-func (l *failMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+func (l *failMiddleware) Call(queue string, messages Msgs, next func() bool) (result bool) {
 	failMiddlewareCalled = true
 	next()
 	return false
 }
 
-func confirm(manager *manager) (msg *Msg) {
+func confirm(manager *manager) (msgs Msgs) {
 	time.Sleep(10 * time.Millisecond)
 
 	select {
-	case msg = <-manager.confirm:
+	case msgs = <-manager.confirm:
 	default:
 	}
 
@@ -39,8 +39,10 @@ func confirm(manager *manager) (msg *Msg) {
 func WorkerSpec(c gospec.Context) {
 	var processed = make(chan *Args)
 
-	var testJob = (func(message *Msg) {
-		processed <- message.Args()
+	var testJob = (func(messages Msgs) {
+		for _, m := range messages {
+			processed <- m.Args()
+		}
 	})
 
 	manager := newManager("myqueue", testJob, 1)
@@ -54,12 +56,14 @@ func WorkerSpec(c gospec.Context) {
 
 	c.Specify("work", func() {
 		worker := newWorker(manager)
-		messages := make(chan *Msg)
-		message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"]}")
+		msgs := make(chan Msgs)
+
+		messages := buildVirginMessages("[\"foo\",\"bar\"]")
+		messages[0].jid = "2309823"
 
 		c.Specify("calls job with message args", func() {
-			go worker.work(messages)
-			messages <- message
+			go worker.work(msgs)
+			msgs <- messages
 
 			args, _ := (<-processed).Array()
 			<-manager.confirm
@@ -72,12 +76,14 @@ func WorkerSpec(c gospec.Context) {
 		})
 
 		c.Specify("confirms job completed", func() {
-			go worker.work(messages)
-			messages <- message
+			go worker.work(msgs)
+			msgs <- messages
 
 			<-processed
 
-			c.Expect(confirm(manager), Equals, message)
+			found := confirm(manager)
+			c.Expect(len(found), Equals, 1)
+			c.Expect(found[0].original, Equals, messages[0].original)
 
 			worker.quit()
 		})
@@ -85,11 +91,15 @@ func WorkerSpec(c gospec.Context) {
 		c.Specify("runs defined middleware and confirms", func() {
 			Middleware.Append(&testMiddleware{})
 
-			go worker.work(messages)
-			messages <- message
+			go worker.work(msgs)
+			msgs <- messages
 
 			<-processed
-			c.Expect(confirm(manager), Equals, message)
+
+			found := confirm(manager)
+			c.Expect(len(found), Equals, 1)
+			c.Expect(found[0].original, Equals, messages[0].original)
+
 			c.Expect(testMiddlewareCalled, IsTrue)
 
 			worker.quit()
@@ -104,11 +114,14 @@ func WorkerSpec(c gospec.Context) {
 		c.Specify("doesn't confirm if middleware cancels acknowledgement", func() {
 			Middleware.Append(&failMiddleware{})
 
-			go worker.work(messages)
-			messages <- message
+			go worker.work(msgs)
+			msgs <- messages
 
 			<-processed
-			c.Expect(confirm(manager), IsNil)
+
+			found := confirm(manager)
+			c.Expect(len(found), Equals, 0)
+
 			c.Expect(failMiddlewareCalled, IsTrue)
 
 			worker.quit()
@@ -121,17 +134,19 @@ func WorkerSpec(c gospec.Context) {
 		})
 
 		c.Specify("recovers and confirms if job panics", func() {
-			var panicJob = (func(message *Msg) {
+			var panicJob = (func(messages Msgs) {
 				panic("AHHHHHHHHH")
 			})
 
 			manager := newManager("myqueue", panicJob, 1)
 			worker := newWorker(manager)
 
-			go worker.work(messages)
-			messages <- message
+			go worker.work(msgs)
+			msgs <- messages
 
-			c.Expect(confirm(manager), Equals, message)
+			found := confirm(manager)
+			c.Expect(len(found), Equals, 1)
+			c.Expect(found[0].original, Equals, messages[0].original)
 
 			worker.quit()
 		})

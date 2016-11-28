@@ -10,10 +10,10 @@ import (
 type Fetcher interface {
 	Queue() string
 	Fetch()
-	Acknowledge(*Msg)
+	Acknowledge(Msgs)
 	Ready() chan bool
 	FinishedWork() chan bool
-	Messages() chan *Msg
+	Messages() chan Msgs
 	Close()
 	Closed() bool
 }
@@ -22,13 +22,13 @@ type fetch struct {
 	queue        string
 	ready        chan bool
 	finishedwork chan bool
-	messages     chan *Msg
+	messages     chan Msgs
 	stop         chan bool
 	exit         chan bool
 	closed       chan bool
 }
 
-func NewFetch(queue string, messages chan *Msg, ready chan bool) Fetcher {
+func NewFetch(queue string, messages chan Msgs, ready chan bool) Fetcher {
 	return &fetch{
 		queue,
 		ready,
@@ -49,16 +49,16 @@ func (f *fetch) processOldMessages() {
 
 	for _, message := range messages {
 		<-f.Ready()
-		f.sendMessage(message)
+		f.sendMessages([]string{message})
 	}
 }
 
 func (f *fetch) Fetch() {
-	messages := make(chan string)
+	messages := make(chan []string)
 
 	f.processOldMessages()
 
-	go func(c chan string) {
+	go func(c chan []string) {
 		for {
 			// f.Close() has been called
 			if f.Closed() {
@@ -72,11 +72,11 @@ func (f *fetch) Fetch() {
 	f.handleMessages(messages)
 }
 
-func (f *fetch) handleMessages(messages chan string) {
+func (f *fetch) handleMessages(messages chan []string) {
 	for {
 		select {
-		case message := <-messages:
-			f.sendMessage(message)
+		case msgs := <-messages:
+			f.sendMessages(msgs)
 		case <-f.stop:
 			// Stop the redis-polling goroutine
 			close(f.closed)
@@ -87,7 +87,7 @@ func (f *fetch) handleMessages(messages chan string) {
 	}
 }
 
-func (f *fetch) tryFetchMessage(messages chan string) {
+func (f *fetch) tryFetchMessage(messages chan []string) {
 	conn := Config.Pool.Get()
 	defer conn.Close()
 
@@ -100,28 +100,31 @@ func (f *fetch) tryFetchMessage(messages chan string) {
 			time.Sleep(1 * time.Second)
 		}
 	} else {
-		messages <- message
+		messages <- []string{message}
 	}
 }
 
-func (f *fetch) sendMessage(message string) {
-	msg, err := NewMsg(message)
-
+func (f *fetch) sendMessages(messages []string) {
+	msgs, err := NewMsgs(messages)
 	if err != nil {
-		Logger.Println("ERR: Couldn't create message from", message, ":", err)
+		Logger.Println("ERR:", err)
 		return
 	}
 
-	f.Messages() <- msg
+	f.Messages() <- msgs
 }
 
-func (f *fetch) Acknowledge(message *Msg) {
+func (f *fetch) Acknowledge(messages Msgs) {
 	conn := Config.Pool.Get()
 	defer conn.Close()
-	conn.Do("lrem", f.inprogressQueue(), -1, message.OriginalJson())
+
+	// TODO optimize with a redis lua script
+	for _, m := range messages {
+		conn.Do("lrem", f.inprogressQueue(), -1, string(m.OriginalJson()))
+	}
 }
 
-func (f *fetch) Messages() chan *Msg {
+func (f *fetch) Messages() chan Msgs {
 	return f.messages
 }
 

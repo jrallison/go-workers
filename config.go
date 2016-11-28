@@ -74,7 +74,7 @@ func Configure(options map[string]string) {
 			},
 		},
 		func(queue string) Fetcher {
-			return NewFetch(queue, make(chan *Msg), make(chan bool))
+			return NewFetch(queue, make(chan Msgs), make(chan bool))
 		},
 	}
 }

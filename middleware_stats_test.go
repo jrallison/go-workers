@@ -1,21 +1,22 @@
 package workers
 
 import (
+	"time"
+
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
-	"time"
 )
 
 func MiddlewareStatsSpec(c gospec.Context) {
-	var job = (func(message *Msg) {
+	var job = (func(messages Msgs) {
 		// noop
 	})
 
 	layout := "2006-01-02"
 	manager := newManager("myqueue", job, 1)
 	worker := newWorker(manager)
-	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
+	messages, _ := NewMsgs([]string{"{\"jid\":\"2\",\"retry\":true}"})
 
 	was := Config.Namespace
 	Config.Namespace = "prod:"
@@ -30,7 +31,7 @@ func MiddlewareStatsSpec(c gospec.Context) {
 		c.Expect(count, Equals, 0)
 		c.Expect(dayCount, Equals, 0)
 
-		worker.process(message)
+		worker.process(messages)
 
 		count, _ = redis.Int(conn.Do("get", "prod:stat:processed"))
 		dayCount, _ = redis.Int(conn.Do("get", "prod:stat:processed:"+time.Now().UTC().Format(layout)))
@@ -40,7 +41,7 @@ func MiddlewareStatsSpec(c gospec.Context) {
 	})
 
 	c.Specify("failed job", func() {
-		var job = (func(message *Msg) {
+		var job = (func(messages Msgs) {
 			panic("AHHHH")
 		})
 
@@ -57,7 +58,7 @@ func MiddlewareStatsSpec(c gospec.Context) {
 			c.Expect(count, Equals, 0)
 			c.Expect(dayCount, Equals, 0)
 
-			worker.process(message)
+			worker.process(messages)
 
 			count, _ = redis.Int(conn.Do("get", "prod:stat:failed"))
 			dayCount, _ = redis.Int(conn.Do("get", "prod:stat:failed:"+time.Now().UTC().Format(layout)))
