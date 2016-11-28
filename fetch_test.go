@@ -4,6 +4,8 @@ import (
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
+
+	simplejson "github.com/bitly/go-simplejson"
 )
 
 func buildFetch(queue string) Fetcher {
@@ -11,6 +13,29 @@ func buildFetch(queue string) Fetcher {
 	fetch := manager.fetch
 	go fetch.Fetch()
 	return fetch
+}
+
+func buildVirginMessages(args ...string) Msgs {
+	var msgs []*Msg
+	for _, a := range args {
+		b := []byte(a)
+		j, _ := simplejson.NewJson(b)
+		msgs = append(msgs, NewMsg("", j, b))
+	}
+	return msgs
+}
+
+func buildMessages(args ...string) Msgs {
+	var s []string
+	for _, a := range args {
+		b := []byte(a)
+		j, _ := simplejson.NewJson(b)
+		m := NewMsg("", j, b)
+		s = append(s, m.ToJson())
+	}
+
+	messages, _ := NewMsgs(s)
+	return messages
 }
 
 func FetchSpec(c gospec.Context) {
@@ -23,7 +48,7 @@ func FetchSpec(c gospec.Context) {
 	})
 
 	c.Specify("Fetch", func() {
-		messages, _ := NewMsgs([]string{"{\"foo\":\"bar\"}"})
+		messages := buildMessages("{\"foo\":\"bar\"}")
 
 		c.Specify("it puts messages from the queues on the messages channel", func() {
 			fetch := buildFetch("fetchQueue2")
@@ -116,7 +141,7 @@ func FetchSpec(c gospec.Context) {
 		})
 
 		c.Specify("refires any messages left in progress from prior instance", func() {
-			msgs, _ := NewMsgs([]string{"{\"foo\":\"bar2\"}", "{\"foo\":\"bar3\"}"})
+			msgs := buildMessages("{\"foo\":\"bar2\"}", "{\"foo\":\"bar3\"}")
 
 			conn := Config.Pool.Get()
 			defer conn.Close()

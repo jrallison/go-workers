@@ -120,7 +120,7 @@ func (f *fetch) Acknowledge(messages Msgs) {
 
 	// TODO optimize with a redis lua script
 	for _, m := range messages {
-		conn.Do("lrem", f.inprogressQueue(), -1, m.OriginalJson())
+		conn.Do("lrem", f.inprogressQueue(), -1, string(m.OriginalJson()))
 	}
 }
 

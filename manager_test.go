@@ -81,8 +81,8 @@ func ManagerSpec(c gospec.Context) {
 		conn := Config.Pool.Get()
 		defer conn.Close()
 
-		message, _ := NewMsg("{\"foo\":\"bar\",\"args\":[\"foo\",\"bar\"]}")
-		message2, _ := NewMsg("{\"foo\":\"bar2\",\"args\":[\"foo\",\"bar2\"]}")
+		msgs := buildVirginMessages("[\"foo\",\"bar\"]", "[\"foo\",\"bar2\"]")
+		message, message2 := msgs[0], msgs[1]
 
 		c.Specify("coordinates processing of queue messages", func() {
 			manager := newManager("manager1", testJob, 10)

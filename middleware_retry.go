@@ -22,8 +22,8 @@ func (r *MiddlewareRetry) Call(queue string, messages Msgs, next func() bool) (a
 
 			for _, m := range messages {
 				if retry(m) {
-					m.Set("queue", queue)
-					m.Set("error_message", fmt.Sprintf("%v", e))
+					m.queue = queue
+					m.error = fmt.Sprintf("%v", e)
 					retryCount := incrementRetry(m)
 
 					waitDuration := durationToSecondsWithNanoPrecision(
@@ -58,34 +58,26 @@ func (r *MiddlewareRetry) Call(queue string, messages Msgs, next func() bool) (a
 }
 
 func retry(message *Msg) bool {
-	retry := false
 	max := DEFAULT_MAX_RETRY
+	retry := message.Retry
+	count := message.retryCount
+	if message.RetryMax != 0 {
+		max = message.RetryMax
 
-	if param, err := message.Get("retry").Bool(); err == nil {
-		retry = param
-	} else if param, err := message.Get("retry").Int(); err == nil {
-		max = param
-		retry = true
 	}
-
-	count, _ := message.Get("retry_count").Int()
-
 	return retry && count < max
 }
 
 func incrementRetry(message *Msg) (retryCount int) {
-	retryCount = 0
-
-	if count, err := message.Get("retry_count").Int(); err != nil {
-		message.Set("failed_at", time.Now().UTC().Format(LAYOUT))
+	t := time.Now().UTC().Format(LAYOUT)
+	if message.retryCount == -1 {
+		message.failedAt = t
 	} else {
-		message.Set("retried_at", time.Now().UTC().Format(LAYOUT))
-		retryCount = count + 1
+		message.retriedAt = t
 	}
+	message.retryCount++
 
-	message.Set("retry_count", retryCount)
-
-	return
+	return message.retryCount
 }
 
 func secondsToDelay(count int) int {
