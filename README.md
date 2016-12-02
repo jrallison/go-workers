@@ -59,6 +59,9 @@ func main() {
   // Add a job to a queue
   workers.Enqueue("myqueue3", "Add", []int{1, 2})
 
+  // Add a job to a queue with retry
+  workers.EnqueueWithOptions("myqueue3", "Add", []int{1, 2}, workers.EnqueueOptions{Retry: true})
+
   // stats will be available at http://localhost:8080/stats
   go workers.StatsServer(8080)
 
