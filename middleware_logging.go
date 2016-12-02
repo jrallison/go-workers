@@ -13,7 +13,7 @@ func (l *MiddlewareLogging) Call(queue string, message *Msg, next func() bool) (
 
 	start := time.Now()
 	Logger.Println(prefix, "start")
-	Logger.Println(prefix, "args: ", message.Args().ToJson())
+	Logger.Println(prefix, "args:", message.Args().ToJson())
 
 	defer func() {
 		if e := recover(); e != nil {
