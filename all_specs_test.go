@@ -39,6 +39,7 @@ func TestAllSpecs(t *testing.T) {
 	r.AddSpec(ManagerSpec)
 	r.AddSpec(ScheduledSpec)
 	r.AddSpec(EnqueueSpec)
+	r.AddSpec(QueueSpec)
 	r.AddSpec(MiddlewareSpec)
 	r.AddSpec(MiddlewareRetrySpec)
 	r.AddSpec(MiddlewareStatsSpec)

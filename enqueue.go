@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -37,19 +39,27 @@ func generateJid() string {
 	return fmt.Sprintf("%x", b)
 }
 
-func Enqueue(queue, class string, args interface{}) (string, error) {
+// Enqueue returns the job ID and queue size (when no errors occur).
+func Enqueue(queue, class string, args interface{}) (string, int, error) {
 	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: nowToSecondsWithNanoPrecision()})
 }
 
-func EnqueueIn(queue, class string, in float64, args interface{}) (string, error) {
+// EnqueueIn returns the job ID and the size of the scheduled job queue (when no errors occur).
+func EnqueueIn(queue, class string, in float64, args interface{}) (string, int, error) {
 	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: nowToSecondsWithNanoPrecision() + in})
 }
 
-func EnqueueAt(queue, class string, at time.Time, args interface{}) (string, error) {
+// EnqueueIn returns the job ID and queue size (when no errors occur). If at is in the future (i.e.
+// it’s a scheduled job) the returned queue size is the number of scheduled jobs in the scheduled
+// jobs queue.
+func EnqueueAt(queue, class string, at time.Time, args interface{}) (string, int, error) {
 	return EnqueueWithOptions(queue, class, args, EnqueueOptions{At: timeToSecondsWithNanoPrecision(at)})
 }
 
-func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, error) {
+// EnqueueWithOptions returns the job ID and queue size (when no errors occur). If opts.At is in
+// the future (i.e. it’s a scheduled job) the returned queue size is the number of scheduled jobs
+// in the scheduled jobs queue.
+func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, int, error) {
 	now := nowToSecondsWithNanoPrecision()
 	data := EnqueueData{
 		Queue:          queue,
@@ -62,12 +72,16 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 
 	bytes, err := json.Marshal(data)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	if now < opts.At {
 		err := enqueueAt(data.At, bytes)
-		return data.Jid, err
+		queueSize := 0
+		if err == nil {
+			queueSize, _ = ScheduledQueueSize()
+		}
+		return data.Jid, queueSize, err
 	}
 
 	conn := Config.Pool.Get()
@@ -75,30 +89,22 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 
 	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	queue = Config.Namespace + "queue:" + queue
-	_, err = conn.Do("rpush", queue, bytes)
+	queueSize, err := redis.Int(conn.Do("rpush", queueKey(queue), bytes))
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
-	return data.Jid, nil
+	return data.Jid, queueSize, nil
 }
 
 func enqueueAt(at float64, bytes []byte) error {
 	conn := Config.Pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do(
-		"zadd",
-		Config.Namespace+SCHEDULED_JOBS_KEY, at, bytes,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err := conn.Do("zadd", scheduledQueueKey(), at, bytes)
+	return err
 }
 
 func timeToSecondsWithNanoPrecision(t time.Time) float64 {
