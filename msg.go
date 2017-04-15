@@ -29,6 +29,7 @@ func (m *Msg) Args() *Args {
 		d, _ := newData("[]")
 		return &Args{d}
 	}
+	return nil
 }
 
 func (m *Msg) OriginalJson() string {
@@ -56,6 +57,7 @@ func NewMsg(content string) (*Msg, error) {
 	} else {
 		return &Msg{d, content}, nil
 	}
+	return nil
 }
 
 func newData(content string) (*data, error) {
@@ -64,4 +66,5 @@ func newData(content string) (*data, error) {
 	} else {
 		return &data{json}, nil
 	}
+	return nil
 }
