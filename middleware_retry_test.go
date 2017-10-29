@@ -1,10 +1,11 @@
 package workers
 
 import (
+	"time"
+
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 	"github.com/garyburd/redigo/redis"
-	"time"
 )
 
 func MiddlewareRetrySpec(c gospec.Context) {
@@ -185,6 +186,91 @@ func MiddlewareRetrySpec(c gospec.Context) {
 
 		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
 		c.Expect(count, Equals, 0)
+	})
+
+	c.Specify("use retry_options when provided - min_delay", func() {
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_options\":{\"exp\":2,\"min_delay\":1200,\"max_rand\":0}}")
+		var now int
+		wares.call("myqueue", message, func() {
+			worker.process(message)
+			now = int(time.Now().Unix())
+		})
+
+		conn := Config.Pool.Get()
+		defer conn.Close()
+
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		c.Expect(count, Equals, 1)
+		values, _ := redis.Values(conn.Do("ZRANGE", "prod:"+RETRY_KEY, 0, -1, "WITHSCORES"))
+
+		msg := ""
+		nextAt := -1.0
+		redis.Scan(values, &msg, &nextAt)
+		c.Expect(int(nextAt), Equals, now+1200)
+	})
+
+	c.Specify("use retry_options when provided - exp", func() {
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_count\":2,\"retry_options\":{\"exp\":2,\"min_delay\":0,\"max_rand\":0}}")
+		var now int
+		wares.call("myqueue", message, func() {
+			worker.process(message)
+			now = int(time.Now().Unix())
+		})
+
+		conn := Config.Pool.Get()
+		defer conn.Close()
+
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		c.Expect(count, Equals, 1)
+		values, _ := redis.Values(conn.Do("ZRANGE", "prod:"+RETRY_KEY, 0, -1, "WITHSCORES"))
+
+		msg := ""
+		nextAt := -1.0
+		redis.Scan(values, &msg, &nextAt)
+		c.Expect(int(nextAt), Equals, now+9)
+	})
+
+	c.Specify("use retry_options when provided - max_delay", func() {
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_options\":{\"exp\":20,\"min_delay\":600,\"max_delay\":10,\"max_rand\":10000}}")
+		var now int
+		wares.call("myqueue", message, func() {
+			worker.process(message)
+			now = int(time.Now().Unix())
+		})
+
+		conn := Config.Pool.Get()
+		defer conn.Close()
+
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		c.Expect(count, Equals, 1)
+		values, _ := redis.Values(conn.Do("ZRANGE", "prod:"+RETRY_KEY, 0, -1, "WITHSCORES"))
+
+		msg := ""
+		nextAt := -1.0
+		redis.Scan(values, &msg, &nextAt)
+		c.Expect(int(nextAt), Equals, now+10)
+	})
+
+	c.Specify("use retry_options when provided - max_rand", func() {
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_options\":{\"exp\":2,\"min_delay\":0,\"max_rand\":100}}")
+		var now int
+		wares.call("myqueue", message, func() {
+			worker.process(message)
+			now = int(time.Now().Unix())
+		})
+
+		conn := Config.Pool.Get()
+		defer conn.Close()
+
+		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		c.Expect(count, Equals, 1)
+		values, _ := redis.Values(conn.Do("ZRANGE", "prod:"+RETRY_KEY, 0, -1, "WITHSCORES"))
+
+		msg := ""
+		nextAt := -1.0
+		redis.Scan(values, &msg, &nextAt)
+		c.Expect(nextAt, Satisfies, nextAt <= float64(now+100))
+		c.Expect(nextAt, Satisfies, nextAt >= float64(now+0))
 	})
 
 	Config.Namespace = was
