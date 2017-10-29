@@ -62,9 +62,13 @@ func retry(message *Msg) bool {
 
 	if param, err := message.Get("retry").Bool(); err == nil {
 		retry = param
-	} else if param, err := message.Get("retry").Int(); err == nil {
+	} else if param, err := message.Get("retry").Int(); err == nil { // compatible with sidekiq
 		max = param
 		retry = true
+	}
+
+	if param, err := message.Get("retry_max").Int(); err == nil {
+		max = param
 	}
 
 	count, _ := message.Get("retry_count").Int()

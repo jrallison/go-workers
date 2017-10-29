@@ -135,7 +135,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("handles recurring failed message with customized max", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":10,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":8}")
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":8,\"retry_max\":10}")
 
 		wares.call("myqueue", message, func() {
 			worker.process(message)
@@ -175,7 +175,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 	})
 
 	c.Specify("doesn't retry after customized number of retries", func() {
-		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":3,\"retry_count\":3}")
+		message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_max\":3,\"retry_count\":3}")
 
 		wares.call("myqueue", message, func() {
 			worker.process(message)
