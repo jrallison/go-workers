@@ -92,7 +92,7 @@ func enqueueAt(at float64, bytes []byte) error {
 
 	_, err := conn.Do(
 		"zadd",
-		Config.Namespace+SCHEDULED_JOBS_KEY, at, bytes,
+		Config.Namespace+Config.ScheduleKey, at, bytes,
 	)
 	if err != nil {
 		return err
