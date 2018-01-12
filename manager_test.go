@@ -3,6 +3,7 @@ package workers
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
@@ -97,6 +98,38 @@ func ManagerSpec(c gospec.Context) {
 
 			len, _ := redis.Int(conn.Do("llen", "prod:queue:manager1"))
 			c.Expect(len, Equals, 0)
+		})
+
+		c.Specify("drain queue completely on exit", func() {
+			sentinel, _ := NewMsg("{\"foo\":\"bar2\",\"args\":\"sentinel\"}")
+
+			drained := false
+
+			slowJob := (func(message *Msg) {
+				if message.ToJson() == sentinel.ToJson() {
+					drained = true
+				} else {
+					processed <- message.Args()
+				}
+
+				time.Sleep(1 * time.Second)
+			})
+			manager := newManager("manager1", slowJob, 10)
+
+			for i := 0; i < 9; i++ {
+				conn.Do("lpush", "prod:queue:manager1", message.ToJson())
+			}
+			conn.Do("lpush", "prod:queue:manager1", sentinel.ToJson())
+
+			manager.start()
+			for i := 0; i < 9; i++ {
+				<-processed
+			}
+			manager.quit()
+
+			len, _ := redis.Int(conn.Do("llen", "prod:queue:manager1"))
+			c.Expect(len, Equals, 0)
+			c.Expect(drained, Equals, true)
 		})
 
 		c.Specify("per-manager middlwares are called separately, global middleware is called in each manager", func() {
