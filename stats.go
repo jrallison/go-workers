@@ -53,7 +53,7 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	conn.Send("multi")
 	conn.Send("get", Config.Namespace+"stat:processed")
 	conn.Send("get", Config.Namespace+"stat:failed")
-	conn.Send("zcard", Config.Namespace+RETRY_KEY)
+	conn.Send("zcard", Config.Namespace+Config.RetryKey)
 
 	for key, _ := range enqueued {
 		conn.Send("llen", fmt.Sprintf("%squeue:%s", Config.Namespace, key))

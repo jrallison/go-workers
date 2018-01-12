@@ -89,7 +89,7 @@ func EnqueueSpec(c gospec.Context) {
 	})
 
 	c.Specify("EnqueueIn", func() {
-		scheduleQueue := "prod:" + SCHEDULED_JOBS_KEY
+		scheduleQueue := "prod:" + Config.ScheduleKey
 		conn := Config.Pool.Get()
 		defer conn.Close()
 

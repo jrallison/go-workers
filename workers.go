@@ -9,11 +9,6 @@ import (
 	"sync"
 )
 
-const (
-	RETRY_KEY          = "goretry"
-	SCHEDULED_JOBS_KEY = "schedule"
-)
-
 var Logger WorkersLogger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
 
 var managers = make(map[string]*manager)
@@ -97,7 +92,7 @@ func StatsServer(port int) {
 
 func startSchedule() {
 	if schedule == nil {
-		schedule = newScheduled(RETRY_KEY, SCHEDULED_JOBS_KEY)
+		schedule = newScheduled(Config.RetryKey, Config.ScheduleKey)
 	}
 
 	schedule.start()
