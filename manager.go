@@ -54,13 +54,14 @@ func (m *manager) manage() {
 
 	go m.fetch.Fetch()
 
+Lmanage:
 	for {
 		select {
 		case message := <-m.confirm:
 			m.fetch.Acknowledge(message)
 		case <-m.stop:
 			m.exit <- true
-			break
+			break Lmanage
 		}
 	}
 }

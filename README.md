@@ -18,7 +18,7 @@ Example usage:
 package main
 
 import (
-	"github.com/jrallison/go-workers"
+  "github.com/jrallison/go-workers"
 )
 
 func myJob(message *workers.Msg) {
