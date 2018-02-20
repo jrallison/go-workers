@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"net/url"
 	"strconv"
 	"time"
 
@@ -42,6 +43,17 @@ func Configure(options map[string]string) {
 
 	poolSize, _ = strconv.Atoi(options["pool"])
 
+	address, err := url.Parse(options["server"])
+	if err != nil {
+		panic("invalid URL specified for server")
+	}
+	password := options["password"]
+	if address.User != nil {
+		if p, ok := address.User.Password(); ok {
+			password = p
+		}
+	}
+
 	Config = &config{
 		options["process"],
 		namespace,
@@ -50,12 +62,12 @@ func Configure(options map[string]string) {
 			MaxIdle:     poolSize,
 			IdleTimeout: 240 * time.Second,
 			Dial: func() (redis.Conn, error) {
-				c, err := redis.Dial("tcp", options["server"])
+				c, err := redis.Dial("tcp", address.Host)
 				if err != nil {
 					return nil, err
 				}
-				if options["password"] != "" {
-					if _, err := c.Do("AUTH", options["password"]); err != nil {
+				if password != "" {
+					if _, err := c.Do("AUTH", password); err != nil {
 						c.Close()
 						return nil, err
 					}
