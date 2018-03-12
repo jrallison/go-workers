@@ -1,3 +1,3 @@
 package workers
 
-type jobFunc func(message *Msg)
+type JobFunc func(message *Msg)

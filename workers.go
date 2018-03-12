@@ -28,7 +28,7 @@ var Middleware = NewMiddleware(
 	&MiddlewareStats{},
 )
 
-func Process(queue string, job jobFunc, concurrency int, mids ...Action) {
+func Process(queue string, job JobFunc, concurrency int, mids ...Action) {
 	access.Lock()
 	defer access.Unlock()
 
