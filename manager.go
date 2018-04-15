@@ -60,7 +60,7 @@ func (m *manager) manage() {
 			m.fetch.Acknowledge(message)
 		case <-m.stop:
 			m.exit <- true
-			break
+			return
 		}
 	}
 }
