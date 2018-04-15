@@ -60,7 +60,7 @@ func (f *fetch) Fetch() {
 		for {
 			// f.Close() has been called
 			if f.Closed() {
-				break
+				return
 			}
 			<-f.Ready()
 			f.tryFetchMessage()
@@ -74,7 +74,7 @@ func (f *fetch) Fetch() {
 			close(f.closed)
 			// Signal to Close() that the fetcher has stopped
 			close(f.exit)
-			break
+			return
 		}
 	}
 }
