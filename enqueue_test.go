@@ -72,7 +72,7 @@ func EnqueueSpec(c gospec.Context) {
 			c.Expect(ea, IsWithin(0.1), nowToSecondsWithNanoPrecision())
 		})
 
-		c.Specify("sets RetryCount to `retry`", func() {
+		c.Specify("sets retry count to `retry`", func() {
 			EnqueueWithOptions("enqueue6", "Compare", []string{"foo", "bar"}, EnqueueOptions{RetryCount: 13})
 
 			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue6"))
@@ -82,6 +82,9 @@ func EnqueueSpec(c gospec.Context) {
 
 			retry := result["retry"].(float64)
 			c.Expect(retry, Equals, float64(13))
+
+			retryCount := result["retry_count"].(float64)
+			c.Expect(retryCount, Equals, float64(0))
 		})
 
 		c.Specify("sets Retry correctly when no count given", func() {

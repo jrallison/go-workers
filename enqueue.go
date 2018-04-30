@@ -28,9 +28,10 @@ func (e EnqueueData) MarshalJSON() ([]byte, error) {
 	if e.EnqueueOptions.RetryCount > 0 {
 		s := struct {
 			EnqueueDataProxy
-			Retry int     `json:"retry,omitempty"`
-			At    float64 `json:"at,omitempty"`
-		}{EnqueueDataProxy(e), o.RetryCount, o.At}
+			Retry      int     `json:"retry,omitempty"`
+			RetryCount int     `json:"retry_count"`
+			At         float64 `json:"at,omitempty"`
+		}{EnqueueDataProxy(e), o.RetryCount, 0, o.At}
 		return json.Marshal(s)
 	}
 
