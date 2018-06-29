@@ -7,10 +7,17 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
+const (
+	defaultRetryKey        = "goretry"
+	defaultScheduleJobsKey = "schedule"
+)
+
 type config struct {
 	processId    string
 	Namespace    string
 	PollInterval int
+	RetryKey     string
+	ScheduleKey  string
 	Pool         *redis.Pool
 	Fetch        func(queue string) Fetcher
 }
@@ -21,6 +28,8 @@ func Configure(options map[string]string) {
 	var poolSize int
 	var namespace string
 	var pollInterval int
+	var retryKey string
+	var scheduleKey string
 
 	if options["server"] == "" {
 		panic("Configure requires a 'server' option, which identifies a Redis instance")
@@ -39,13 +48,21 @@ func Configure(options map[string]string) {
 	} else {
 		pollInterval = 15
 	}
+	if options["retry_key"] == "" {
+		retryKey = defaultRetryKey
+	} else {
+		retryKey = options["retry_key"]
+	}
 
+	scheduleKey = defaultScheduleJobsKey
 	poolSize, _ = strconv.Atoi(options["pool"])
 
 	Config = &config{
 		options["process"],
 		namespace,
 		pollInterval,
+		retryKey,
+		scheduleKey,
 		&redis.Pool{
 			MaxIdle:     poolSize,
 			IdleTimeout: 240 * time.Second,

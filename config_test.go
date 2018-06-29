@@ -87,4 +87,24 @@ func ConfigSpec(c gospec.Context) {
 
 		c.Expect(Config.PollInterval, Equals, 1)
 	})
+
+	c.Specify("defaults retry key to goretry", func() {
+		Configure(map[string]string{
+			"server":  "localhost:6379",
+			"process": "1",
+		})
+
+		c.Expect(Config.RetryKey, Equals, "goretry")
+	})
+
+	c.Specify("add 'retry' to the retry key", func() {
+		Configure(map[string]string{
+			"server":    "localhost:6379",
+			"process":   "1",
+			"retry_key": "retry",
+		})
+
+		c.Expect(Config.RetryKey, Equals, "retry")
+	})
+
 }
