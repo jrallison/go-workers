@@ -22,6 +22,10 @@ func (m *Msg) Jid() string {
 	return m.Get("jid").MustString()
 }
 
+func (m *Msg) Queue() string {
+	return m.Get("queue").MustString()
+}
+
 func (m *Msg) Args() *Args {
 	if args, ok := m.CheckGet("args"); ok {
 		return &Args{&data{args}}

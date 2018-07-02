@@ -7,7 +7,7 @@ import (
 )
 
 func ScheduledSpec(c gospec.Context) {
-	scheduled := newScheduled(RETRY_KEY)
+	scheduled := newScheduled(Config.RetryKey)
 
 	was := Config.Namespace
 	Config.Namespace = "prod:"
@@ -22,15 +22,15 @@ func ScheduledSpec(c gospec.Context) {
 		message2, _ := NewMsg("{\"queue\":\"myqueue\",\"foo\":\"bar2\"}")
 		message3, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar3\"}")
 
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-60.0, message1.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-10.0, message2.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now+60.0, message3.ToJson())
+		conn.Do("zadd", "prod:"+Config.RetryKey, now-60.0, message1.ToJson())
+		conn.Do("zadd", "prod:"+Config.RetryKey, now-10.0, message2.ToJson())
+		conn.Do("zadd", "prod:"+Config.RetryKey, now+60.0, message3.ToJson())
 
 		scheduled.poll()
 
 		defaultCount, _ := redis.Int(conn.Do("llen", "prod:queue:default"))
 		myqueueCount, _ := redis.Int(conn.Do("llen", "prod:queue:myqueue"))
-		pending, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		pending, _ := redis.Int(conn.Do("zcard", "prod:"+Config.RetryKey))
 
 		c.Expect(defaultCount, Equals, 1)
 		c.Expect(myqueueCount, Equals, 1)

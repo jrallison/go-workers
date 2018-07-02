@@ -24,6 +24,13 @@ func MsgSpec(c gospec.Context) {
 		})
 	})
 
+	c.Specify("Queue", func() {
+		c.Specify("returns queue key", func() {
+			msg, _ := NewMsg("{\"hello\":\"world\",\"queue\":\"default\"}")
+			c.Expect(msg.Queue(), Equals, "default")
+		})
+	})
+
 	c.Specify("Args", func() {
 		c.Specify("returns args key", func() {
 			msg, _ := NewMsg("{\"hello\":\"world\",\"args\":[\"foo\",\"bar\"]}")
