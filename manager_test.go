@@ -1,7 +1,7 @@
 package workers
 
 import (
-	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -54,7 +54,11 @@ func ManagerSpec(c gospec.Context) {
 
 		c.Specify("sets job function", func() {
 			manager := newManager("myqueue", testJob, 10)
-			c.Expect(fmt.Sprint(manager.job), Equals, fmt.Sprint(testJob))
+
+			f1 := reflect.ValueOf(manager.job)
+			f2 := reflect.ValueOf(testJob)
+
+			c.Expect(f1.Pointer(), Equals, f2.Pointer())
 		})
 
 		c.Specify("sets worker concurrency", func() {
