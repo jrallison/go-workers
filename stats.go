@@ -15,10 +15,42 @@ type stats struct {
 	Retries   int64       `json:"retries"`
 }
 
+// Stats writes stats on response writer
 func Stats(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
+	stats := getStats()
+
+	body, _ := json.MarshalIndent(stats, "", "  ")
+	fmt.Fprintln(w, string(body))
+}
+
+// WorkerStats holds workers stats
+type WorkerStats struct {
+	Processed int               `json:"processed"`
+	Failed    int               `json:"failed"`
+	Enqueued  map[string]string `json:"enqueued"`
+	Retries   int64             `json:"retries"`
+}
+
+// GetStats returns workers stats
+func GetStats() *WorkerStats {
+	stats := getStats()
+	enqueued := map[string]string{}
+	if statsEnqueued, ok := stats.Enqueued.(map[string]string); ok {
+		enqueued = statsEnqueued
+	}
+
+	return &WorkerStats{
+		Processed: stats.Processed,
+		Failed:    stats.Failed,
+		Retries:   stats.Retries,
+		Enqueued:  enqueued,
+	}
+}
+
+func getStats() stats {
 	jobs := make(map[string][]*map[string]interface{})
 	enqueued := make(map[string]string)
 
@@ -55,7 +87,7 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	conn.Send("get", Config.Namespace+"stat:failed")
 	conn.Send("zcard", Config.Namespace+RETRY_KEY)
 
-	for key, _ := range enqueued {
+	for key := range enqueued {
 		conn.Send("llen", fmt.Sprintf("%squeue:%s", Config.Namespace, key))
 	}
 
@@ -83,7 +115,7 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 			}
 
 			queueIndex := 0
-			for key, _ := range enqueued {
+			for key := range enqueued {
 				if queueIndex == (index - 3) {
 					enqueued[key] = fmt.Sprintf("%d", result.(int64))
 				}
@@ -92,6 +124,5 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	body, _ := json.MarshalIndent(stats, "", "  ")
-	fmt.Fprintln(w, string(body))
+	return stats
 }
