@@ -3,7 +3,7 @@ package workers
 import (
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
+	"github.com/go-redis/redis"
 )
 
 func ScheduledSpec(c gospec.Context) {
@@ -13,8 +13,7 @@ func ScheduledSpec(c gospec.Context) {
 	Config.Namespace = "prod:"
 
 	c.Specify("empties retry queues up to the current time", func() {
-		conn := Config.Pool.Get()
-		defer conn.Close()
+		rc := Config.Client
 
 		now := nowToSecondsWithNanoPrecision()
 
@@ -22,19 +21,19 @@ func ScheduledSpec(c gospec.Context) {
 		message2, _ := NewMsg("{\"queue\":\"myqueue\",\"foo\":\"bar2\"}")
 		message3, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar3\"}")
 
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-60.0, message1.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now-10.0, message2.ToJson())
-		conn.Do("zadd", "prod:"+RETRY_KEY, now+60.0, message3.ToJson())
+		rc.ZAdd("prod:"+RETRY_KEY, redis.Z{Score: now - 60.0, Member: message1.ToJson()}).Result()
+		rc.ZAdd("prod:"+RETRY_KEY, redis.Z{Score: now - 10.0, Member: message2.ToJson()}).Result()
+		rc.ZAdd("prod:"+RETRY_KEY, redis.Z{Score: now + 60.0, Member: message3.ToJson()}).Result()
 
 		scheduled.poll()
 
-		defaultCount, _ := redis.Int(conn.Do("llen", "prod:queue:default"))
-		myqueueCount, _ := redis.Int(conn.Do("llen", "prod:queue:myqueue"))
-		pending, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		defaultCount, _ := rc.LLen("prod:queue:default").Result()
+		myqueueCount, _ := rc.LLen("prod:queue:myqueue").Result()
+		pending, _ := rc.ZCard("prod:" + RETRY_KEY).Result()
 
-		c.Expect(defaultCount, Equals, 1)
-		c.Expect(myqueueCount, Equals, 1)
-		c.Expect(pending, Equals, 1)
+		c.Expect(defaultCount, Equals, int64(1))
+		c.Expect(myqueueCount, Equals, int64(1))
+		c.Expect(pending, Equals, int64(1))
 	})
 
 	Config.Namespace = was

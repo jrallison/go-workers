@@ -1,10 +1,11 @@
 package workers
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
+	"github.com/go-redis/redis"
 )
 
 type scheduled struct {
@@ -34,14 +35,19 @@ func (s *scheduled) quit() {
 }
 
 func (s *scheduled) poll() {
-	conn := Config.Pool.Get()
+	rc := Config.Client
 
 	now := nowToSecondsWithNanoPrecision()
 
 	for _, key := range s.keys {
 		key = Config.Namespace + key
 		for {
-			messages, _ := redis.Strings(conn.Do("zrangebyscore", key, "-inf", now, "limit", 0, 1))
+			messages, _ := rc.ZRangeByScore(key, redis.ZRangeBy{
+				Min:    "-inf",
+				Max:    strconv.FormatFloat(now, 'f', -1, 64),
+				Offset: 0,
+				Count:  1,
+			}).Result()
 
 			if len(messages) == 0 {
 				break
@@ -49,16 +55,14 @@ func (s *scheduled) poll() {
 
 			message, _ := NewMsg(messages[0])
 
-			if removed, _ := redis.Bool(conn.Do("zrem", key, messages[0])); removed {
+			if removed, _ := rc.ZRem(key, messages[0]).Result(); removed != 0 {
 				queue, _ := message.Get("queue").String()
 				queue = strings.TrimPrefix(queue, Config.Namespace)
 				message.Set("enqueued_at", nowToSecondsWithNanoPrecision())
-				conn.Do("lpush", Config.Namespace+"queue:"+queue, message.ToJson())
+				rc.LPush(Config.Namespace+"queue:"+queue, message.ToJson()).Result()
 			}
 		}
 	}
-
-	conn.Close()
 }
 
 func newScheduled(keys ...string) *scheduled {

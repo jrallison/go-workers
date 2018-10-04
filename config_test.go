@@ -19,7 +19,7 @@ func ConfigSpec(c gospec.Context) {
 	}
 
 	c.Specify("sets redis pool size which defaults to 1", func() {
-		c.Expect(Config.Pool.MaxIdle, Equals, 1)
+		c.Expect(Config.Client.Options().PoolSize, Equals, 1)
 
 		Configure(map[string]string{
 			"server":  "localhost:6379",
@@ -27,7 +27,7 @@ func ConfigSpec(c gospec.Context) {
 			"pool":    "20",
 		})
 
-		c.Expect(Config.Pool.MaxIdle, Equals, 20)
+		c.Expect(Config.Client.Options().PoolSize, Equals, 20)
 	})
 
 	c.Specify("can specify custom process", func() {
@@ -41,12 +41,12 @@ func ConfigSpec(c gospec.Context) {
 		c.Expect(Config.processId, Equals, "2")
 	})
 
-	c.Specify("requires a server parameter", func() {
+	c.Specify("requires a server or sentinel parameter", func() {
 		err := recoverOnPanic(func() {
 			Configure(map[string]string{"process": "2"})
 		})
 
-		c.Expect(err, Equals, "Configure requires a 'server' option, which identifies a Redis instance")
+		c.Expect(err, Equals, "Configure requires a 'server' or 'sentinels' options, which identify either Redis instance or sentinels.")
 	})
 
 	c.Specify("requires a process parameter", func() {
@@ -86,5 +86,15 @@ func ConfigSpec(c gospec.Context) {
 		})
 
 		c.Expect(Config.PollInterval, Equals, 1)
+	})
+
+	c.Specify("configure sentinels", func() {
+		Configure(map[string]string{
+			"sentinels":     "localhost:26379,localhost:46379",
+			"process":       "1",
+			"poll_interval": "1",
+		})
+
+		c.Expect(Config.Client.Options().Addr, Equals, "FailoverClient")
 	})
 }
