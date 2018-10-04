@@ -19,7 +19,7 @@ func ConfigSpec(c gospec.Context) {
 	}
 
 	c.Specify("sets redis pool size which defaults to 1", func() {
-		c.Expect(Config.Pool.MaxIdle, Equals, 1)
+		c.Expect(Config.Client.Options().PoolSize, Equals, 1)
 
 		Configure(map[string]string{
 			"server":  "localhost:6379",
@@ -27,7 +27,7 @@ func ConfigSpec(c gospec.Context) {
 			"pool":    "20",
 		})
 
-		c.Expect(Config.Pool.MaxIdle, Equals, 20)
+		c.Expect(Config.Client.Options().PoolSize, Equals, 20)
 	})
 
 	c.Specify("can specify custom process", func() {
