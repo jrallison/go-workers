@@ -4,27 +4,32 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
+	"github.com/go-redis/redis"
 )
 
 type config struct {
 	processId    string
 	Namespace    string
 	PollInterval int
-	Pool         *redis.Pool
+	Client       *redis.Client
 	Fetch        func(queue string) Fetcher
 }
 
 var Config *config
 
 func Configure(options map[string]string) {
-	var poolSize int
 	var namespace string
 	var pollInterval int
+
+	redisOptions := &redis.Options{
+		IdleTimeout: 240 * time.Second,
+	}
 
 	if options["server"] == "" {
 		panic("Configure requires a 'server' option, which identifies a Redis instance")
 	}
+	redisOptions.Addr = options["server"]
+
 	if options["process"] == "" {
 		panic("Configure requires a 'process' option, which uniquely identifies this instance")
 	}
@@ -40,39 +45,27 @@ func Configure(options map[string]string) {
 		pollInterval = 15
 	}
 
-	poolSize, _ = strconv.Atoi(options["pool"])
+	redisOptions.PoolSize, _ = strconv.Atoi(options["pool"])
+
+	if options["database"] != "" {
+		dbNum, err := strconv.Atoi(options["database"])
+		if err != nil {
+			panic("Incorrect database number provided.")
+		}
+		redisOptions.DB = dbNum
+	} else {
+		redisOptions.DB = 0
+	}
+
+	if options["password"] != "" {
+		redisOptions.Password = options["password"]
+	}
 
 	Config = &config{
 		options["process"],
 		namespace,
 		pollInterval,
-		&redis.Pool{
-			MaxIdle:     poolSize,
-			IdleTimeout: 240 * time.Second,
-			Dial: func() (redis.Conn, error) {
-				c, err := redis.Dial("tcp", options["server"])
-				if err != nil {
-					return nil, err
-				}
-				if options["password"] != "" {
-					if _, err := c.Do("AUTH", options["password"]); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
-				if options["database"] != "" {
-					if _, err := c.Do("SELECT", options["database"]); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
-				return c, err
-			},
-			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-				_, err := c.Do("PING")
-				return err
-			},
-		},
+		redis.NewClient(redisOptions),
 		func(queue string) Fetcher {
 			return NewFetch(queue, make(chan *Msg), make(chan bool))
 		},

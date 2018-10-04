@@ -25,9 +25,8 @@ func TestAllSpecs(t *testing.T) {
 			"pool":     "1",
 		})
 
-		conn := Config.Pool.Get()
-		conn.Do("flushdb")
-		conn.Close()
+		rc := Config.Client
+		rc.FlushDB().Result()
 	}
 
 	// List all specs here
