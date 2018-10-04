@@ -2,6 +2,7 @@ package workers
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -21,21 +22,10 @@ func Configure(options map[string]string) {
 	var namespace string
 	var pollInterval int
 
-	redisOptions := &redis.Options{
-		IdleTimeout: 240 * time.Second,
-	}
-
-	if options["server"] == "" {
-		panic("Configure requires a 'server' option, which identifies a Redis instance")
-	}
-	redisOptions.Addr = options["server"]
-
 	if options["process"] == "" {
 		panic("Configure requires a 'process' option, which uniquely identifies this instance")
 	}
-	if options["pool"] == "" {
-		options["pool"] = "1"
-	}
+
 	if options["namespace"] != "" {
 		namespace = options["namespace"] + ":"
 	}
@@ -45,28 +35,62 @@ func Configure(options map[string]string) {
 		pollInterval = 15
 	}
 
-	redisOptions.PoolSize, _ = strconv.Atoi(options["pool"])
-
+	var redisDB int
 	if options["database"] != "" {
 		dbNum, err := strconv.Atoi(options["database"])
 		if err != nil {
 			panic("Incorrect database number provided.")
 		}
-		redisOptions.DB = dbNum
+		redisDB = dbNum
 	} else {
-		redisOptions.DB = 0
+		redisDB = 0
 	}
 
+	var redisPassword string
 	if options["password"] != "" {
-		redisOptions.Password = options["password"]
+		redisPassword = options["password"]
+	}
+
+	if options["pool"] == "" {
+		options["pool"] = "1"
+	}
+	redisPoolSize, _ := strconv.Atoi(options["pool"])
+
+	redisIdleTimeout := 240 * time.Second
+
+	var rc *redis.Client
+	if options["server"] != "" {
+		redisOptions := &redis.Options{
+			IdleTimeout: redisIdleTimeout,
+			Password:    redisPassword,
+			DB:          redisDB,
+			PoolSize:    redisPoolSize,
+		}
+
+		redisOptions.Addr = options["server"]
+
+		rc = redis.NewClient(redisOptions)
+	} else if options["sentinels"] != "" {
+		redisOptions := &redis.FailoverOptions{
+			IdleTimeout: redisIdleTimeout,
+			Password:    redisPassword,
+			DB:          redisDB,
+			PoolSize:    redisPoolSize,
+		}
+
+		redisOptions.SentinelAddrs = strings.Split(options["sentinels"], ",")
+
+		rc = redis.NewFailoverClient(redisOptions)
+	} else {
+		panic("Configure requires a 'server' or 'sentinels' options, which identify either Redis instance or sentinels.")
 	}
 
 	Config = &config{
-		options["process"],
-		namespace,
-		pollInterval,
-		redis.NewClient(redisOptions),
-		func(queue string) Fetcher {
+		processId:    options["process"],
+		Namespace:    namespace,
+		PollInterval: pollInterval,
+		Client:       rc,
+		Fetch: func(queue string) Fetcher {
 			return NewFetch(queue, make(chan *Msg), make(chan bool))
 		},
 	}
