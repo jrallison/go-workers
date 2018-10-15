@@ -2,9 +2,9 @@ package workers
 
 import (
 	"reflect"
+	"testing"
 
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
+	"github.com/stretchr/testify/assert"
 )
 
 var called chan bool
@@ -13,84 +13,81 @@ func myJob(message *Msg) {
 	called <- true
 }
 
-func WorkersSpec(c gospec.Context) {
-	c.Specify("Workers", func() {
-		c.Specify("allows running in tests", func() {
-			called = make(chan bool)
+func TestWorkers(t *testing.T) {
+	setupTestConfig()
 
-			Process("myqueue", myJob, 10)
+	//allows running in tests
+	called = make(chan bool)
 
-			Start()
+	Process("myqueue", myJob, 10)
 
-			Enqueue("myqueue", "Add", []int{1, 2})
-			<-called
+	Start()
 
-			Quit()
-		})
+	Enqueue("myqueue", "Add", []int{1, 2})
+	<-called
 
-		// TODO make this test more deterministic, randomly locks up in travis.
-		//c.Specify("allows starting and stopping multiple times", func() {
-		//	called = make(chan bool)
+	Quit()
 
-		//	Process("myqueue", myJob, 10)
+	// TODO make this test more deterministic, randomly locks up in travis.
+	//allows starting and stopping multiple times
+	//	called = make(chan bool)
 
-		//	Start()
-		//	Quit()
+	//	Process("myqueue", myJob, 10)
 
-		//	Start()
+	//	Start()
+	//	Quit()
 
-		//	Enqueue("myqueue", "Add", []int{1, 2})
-		//	<-called
+	//	Start()
 
-		//	Quit()
-		//})
+	//	Enqueue("myqueue", "Add", []int{1, 2})
+	//	<-called
 
-		c.Specify("runs beforeStart hooks", func() {
-			hooks := []string{}
+	//	Quit()
+	//
 
-			BeforeStart(func() {
-				hooks = append(hooks, "1")
-			})
-			BeforeStart(func() {
-				hooks = append(hooks, "2")
-			})
-			BeforeStart(func() {
-				hooks = append(hooks, "3")
-			})
+	//runs beforeStart hooks
+	hooks := []string{}
 
-			Start()
-
-			c.Expect(reflect.DeepEqual(hooks, []string{"1", "2", "3"}), IsTrue)
-
-			Quit()
-
-			// Clear out global hooks variable
-			beforeStart = nil
-		})
-
-		c.Specify("runs beforeStart hooks", func() {
-			hooks := []string{}
-
-			DuringDrain(func() {
-				hooks = append(hooks, "1")
-			})
-			DuringDrain(func() {
-				hooks = append(hooks, "2")
-			})
-			DuringDrain(func() {
-				hooks = append(hooks, "3")
-			})
-
-			Start()
-
-			c.Expect(reflect.DeepEqual(hooks, []string{}), IsTrue)
-
-			Quit()
-
-			c.Expect(reflect.DeepEqual(hooks, []string{"1", "2", "3"}), IsTrue)
-
-			// Clear out global hooks variable
-			duringDrain = nil
-		})
+	BeforeStart(func() {
+		hooks = append(hooks, "1")
 	})
+	BeforeStart(func() {
+		hooks = append(hooks, "2")
+	})
+	BeforeStart(func() {
+		hooks = append(hooks, "3")
+	})
+
+	Start()
+
+	assert.True(t, reflect.DeepEqual(hooks, []string{"1", "2", "3"}))
+
+	Quit()
+
+	// Clear out global hooks variable
+	beforeStart = nil
+
+	//runs beforeStart hooks"
+	hooks = []string{}
+
+	DuringDrain(func() {
+		hooks = append(hooks, "1")
+	})
+	DuringDrain(func() {
+		hooks = append(hooks, "2")
+	})
+	DuringDrain(func() {
+		hooks = append(hooks, "3")
+	})
+
+	Start()
+
+	assert.True(t, reflect.DeepEqual(hooks, []string{}))
+
+	Quit()
+
+	assert.True(t, reflect.DeepEqual(hooks, []string{"1", "2", "3"}))
+
+	// Clear out global hooks variable
+	duringDrain = nil
 }

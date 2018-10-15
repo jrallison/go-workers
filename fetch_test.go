@@ -1,9 +1,9 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func buildFetch(queue string) Fetcher {
@@ -13,128 +13,128 @@ func buildFetch(queue string) Fetcher {
 	return fetch
 }
 
-func FetchSpec(c gospec.Context) {
-	c.Specify("Config.Fetch", func() {
-		c.Specify("it returns an instance of fetch with queue", func() {
-			fetch := buildFetch("fetchQueue1")
-			c.Expect(fetch.Queue(), Equals, "queue:fetchQueue1")
-			fetch.Close()
-		})
-	})
+func TestFetchConfig(t *testing.T) {
+	setupTestConfig()
+	fetch := buildFetch("fetchQueue1")
+	assert.Equal(t, "queue:fetchQueue1", fetch.Queue())
+	fetch.Close()
+}
 
-	c.Specify("Fetch", func() {
-		message, _ := NewMsg("{\"foo\":\"bar\"}")
+func TestGetMessagesToChannel(t *testing.T) {
+	setupTestConfig()
 
-		c.Specify("it puts messages from the queues on the messages channel", func() {
-			fetch := buildFetch("fetchQueue2")
+	message, _ := NewMsg("{\"foo\":\"bar\"}")
+	fetch := buildFetch("fetchQueue2")
 
-			conn := Config.Pool.Get()
-			defer conn.Close()
+	rc := Config.Client
 
-			conn.Do("lpush", "queue:fetchQueue2", message.ToJson())
+	rc.LPush("queue:fetchQueue2", message.ToJson()).Result()
 
-			fetch.Ready() <- true
-			message := <-fetch.Messages()
+	fetch.Ready() <- true
+	fetchedMessage := <-fetch.Messages()
 
-			c.Expect(message, Equals, message)
+	assert.Equal(t, message, fetchedMessage)
 
-			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue2"))
-			c.Expect(len, Equals, 0)
+	len, _ := rc.LLen("queue:fetchQueue2").Result()
+	assert.Equal(t, int64(0), len)
 
-			fetch.Close()
-		})
+	fetch.Close()
+}
 
-		c.Specify("places in progress messages on private queue", func() {
-			fetch := buildFetch("fetchQueue3")
+func TestMoveProgressMessageToPrivateQueue(t *testing.T) {
+	setupTestConfig()
+	message, _ := NewMsg("{\"foo\":\"bar\"}")
 
-			conn := Config.Pool.Get()
-			defer conn.Close()
+	fetch := buildFetch("fetchQueue3")
 
-			conn.Do("lpush", "queue:fetchQueue3", message.ToJson())
+	rc := Config.Client
 
-			fetch.Ready() <- true
-			<-fetch.Messages()
+	rc.LPush("queue:fetchQueue3", message.ToJson())
 
-			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue3:1:inprogress"))
-			c.Expect(len, Equals, 1)
+	fetch.Ready() <- true
+	<-fetch.Messages()
 
-			messages, _ := redis.Strings(conn.Do("lrange", "queue:fetchQueue3:1:inprogress", 0, -1))
-			c.Expect(messages[0], Equals, message.ToJson())
+	len, _ := rc.LLen("queue:fetchQueue3:1:inprogress").Result()
+	assert.Equal(t, int64(1), len)
 
-			fetch.Close()
-		})
+	messages, _ := rc.LRange("queue:fetchQueue3:1:inprogress", 0, -1).Result()
+	assert.Equal(t, message.ToJson(), messages[0])
 
-		c.Specify("removes in progress message when acknowledged", func() {
-			fetch := buildFetch("fetchQueue4")
+	fetch.Close()
+}
 
-			conn := Config.Pool.Get()
-			defer conn.Close()
+func TestRemoveProgressMessageWhenAcked(t *testing.T) {
+	setupTestConfig()
+	message, _ := NewMsg("{\"foo\":\"bar\"}")
 
-			conn.Do("lpush", "queue:fetchQueue4", message.ToJson())
+	fetch := buildFetch("fetchQueue4")
 
-			fetch.Ready() <- true
-			<-fetch.Messages()
+	rc := Config.Client
 
-			fetch.Acknowledge(message)
+	rc.LPush("queue:fetchQueue4", message.ToJson()).Result()
 
-			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue4:1:inprogress"))
-			c.Expect(len, Equals, 0)
+	fetch.Ready() <- true
+	<-fetch.Messages()
 
-			fetch.Close()
-		})
+	fetch.Acknowledge(message)
 
-		c.Specify("removes in progress message when serialized differently", func() {
-			json := "{\"foo\":\"bar\",\"args\":[]}"
-			message, _ := NewMsg(json)
+	len, _ := rc.LLen("queue:fetchQueue4:1:inprogress").Result()
+	assert.Equal(t, int64(0), len)
 
-			c.Expect(json, Not(Equals), message.ToJson())
+	fetch.Close()
+}
 
-			fetch := buildFetch("fetchQueue5")
+func TestRemoveProgressMessageDifferentSerialization(t *testing.T) {
+	setupTestConfig()
+	json := "{\"foo\":\"bar\",\"args\":[]}"
+	message, _ := NewMsg(json)
 
-			conn := Config.Pool.Get()
-			defer conn.Close()
+	assert.NotEqual(t, message.ToJson(), json)
 
-			conn.Do("lpush", "queue:fetchQueue5", json)
+	fetch := buildFetch("fetchQueue5")
 
-			fetch.Ready() <- true
-			<-fetch.Messages()
+	rc := Config.Client
 
-			fetch.Acknowledge(message)
+	rc.LPush("queue:fetchQueue5", json).Result()
 
-			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue5:1:inprogress"))
-			c.Expect(len, Equals, 0)
+	fetch.Ready() <- true
+	<-fetch.Messages()
 
-			fetch.Close()
-		})
+	fetch.Acknowledge(message)
 
-		c.Specify("refires any messages left in progress from prior instance", func() {
-			message2, _ := NewMsg("{\"foo\":\"bar2\"}")
-			message3, _ := NewMsg("{\"foo\":\"bar3\"}")
+	len, _ := rc.LLen("queue:fetchQueue5:1:inprogress").Result()
+	assert.Equal(t, int64(0), len)
 
-			conn := Config.Pool.Get()
-			defer conn.Close()
+	fetch.Close()
+}
 
-			conn.Do("lpush", "queue:fetchQueue6:1:inprogress", message.ToJson())
-			conn.Do("lpush", "queue:fetchQueue6:1:inprogress", message2.ToJson())
-			conn.Do("lpush", "queue:fetchQueue6", message3.ToJson())
+func TestRetryInprogressMessages(t *testing.T) {
+	setupTestConfig()
+	message, _ := NewMsg("{\"foo\":\"bar\"}")
+	message2, _ := NewMsg("{\"foo\":\"bar2\"}")
+	message3, _ := NewMsg("{\"foo\":\"bar3\"}")
 
-			fetch := buildFetch("fetchQueue6")
+	rc := Config.Client
 
-			fetch.Ready() <- true
-			c.Expect(<-fetch.Messages(), Equals, message2)
-			fetch.Ready() <- true
-			c.Expect(<-fetch.Messages(), Equals, message)
-			fetch.Ready() <- true
-			c.Expect(<-fetch.Messages(), Equals, message3)
+	rc.LPush("queue:fetchQueue6:1:inprogress", message.ToJson()).Result()
+	rc.LPush("queue:fetchQueue6:1:inprogress", message2.ToJson()).Result()
+	rc.LPush("queue:fetchQueue6", message3.ToJson()).Result()
 
-			fetch.Acknowledge(message)
-			fetch.Acknowledge(message2)
-			fetch.Acknowledge(message3)
+	fetch := buildFetch("fetchQueue6")
 
-			len, _ := redis.Int(conn.Do("llen", "queue:fetchQueue6:1:inprogress"))
-			c.Expect(len, Equals, 0)
+	fetch.Ready() <- true
+	assert.Equal(t, message2, <-fetch.Messages())
+	fetch.Ready() <- true
+	assert.Equal(t, message, <-fetch.Messages())
+	fetch.Ready() <- true
+	assert.Equal(t, message3, <-fetch.Messages())
 
-			fetch.Close()
-		})
-	})
+	fetch.Acknowledge(message)
+	fetch.Acknowledge(message2)
+	fetch.Acknowledge(message3)
+
+	len, _ := rc.LLen("queue:fetchQueue6:1:inprogress").Result()
+	assert.Equal(t, int64(0), len)
+
+	fetch.Close()
 }
