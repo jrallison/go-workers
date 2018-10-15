@@ -1,8 +1,9 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func arrayCompare(a1, a2 []string) bool {
@@ -38,66 +39,62 @@ func (m *m2) Call(queue string, message *Msg, next func() bool) (result bool) {
 	return
 }
 
-func MiddlewareSpec(c gospec.Context) {
+func TestNewMiddleware(t *testing.T) {
+	//no middleware
+	middleware := NewMiddleware()
+	assert.Equal(t, 0, len(middleware.actions))
+
+	//middleware set when initializing
+	first := &m1{}
+	second := &m2{}
+	middleware = NewMiddleware(first, second)
+	assert.Equal(t, first, middleware.actions[0])
+	assert.Equal(t, second, middleware.actions[1])
+}
+
+func TestAppendMiddleware(t *testing.T) {
+	first := &m1{}
+	second := &m2{}
+	middleware := NewMiddleware()
+	middleware.Append(first)
+	middleware.Append(second)
+
+	middleware.call("myqueue", message, func() {
+		order = append(order, "job")
+	})
+
+	expectedOrder := []string{
+		"m1 enter",
+		"m2 enter",
+		"job",
+		"m2 leave",
+		"m1 leave",
+	}
+
+	assert.Equal(t, expectedOrder, order)
+}
+
+func TestPrependMiddleware(t *testing.T) {
 	middleware := NewMiddleware()
 	message, _ := NewMsg("{\"foo\":\"bar\"}")
 	order = make([]string, 0)
 	first := &m1{}
 	second := &m2{}
 
-	c.Specify("newMiddleware", func() {
-		c.Specify("doesn't contain any middleware", func() {
-			c.Expect(len(middleware.actions), Equals, 0)
-		})
+	middleware.Prepend(first)
+	middleware.Prepend(second)
 
-		c.Specify("can specify middleware when initializing", func() {
-			middleware = NewMiddleware(first, second)
-			c.Expect(middleware.actions[0], Equals, first)
-			c.Expect(middleware.actions[1], Equals, second)
-		})
+	middleware.call("myqueue", message, func() {
+		order = append(order, "job")
 	})
 
-	c.Specify("Append", func() {
-		c.Specify("adds function at the end of the list", func() {
-			middleware.Append(first)
-			middleware.Append(second)
+	expectedOrder := []string{
+		"m2 enter",
+		"m1 enter",
+		"job",
+		"m1 leave",
+		"m2 leave",
+	}
 
-			middleware.call("myqueue", message, func() {
-				order = append(order, "job")
-			})
-
-			c.Expect(
-				arrayCompare(order, []string{
-					"m1 enter",
-					"m2 enter",
-					"job",
-					"m2 leave",
-					"m1 leave",
-				}),
-				IsTrue,
-			)
-		})
-	})
-
-	c.Specify("{repend", func() {
-		c.Specify("adds function at the beginning of the list", func() {
-			middleware.Prepend(first)
-			middleware.Prepend(second)
-
-			middleware.call("myqueue", message, func() {
-				order = append(order, "job")
-			})
-
-			c.Expect(
-				arrayCompare(order, []string{
-					"m2 enter",
-					"m1 enter",
-					"job",
-					"m1 leave",
-					"m2 leave",
-				}),
-				IsTrue,
-			)
-		})
-	})
+	assert.Equal(t, expectedOrder, order)
 }
