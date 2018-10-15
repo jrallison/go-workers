@@ -2,77 +2,74 @@ package workers
 
 import (
 	"strconv"
+	"testing"
 	"time"
 
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
+	"github.com/stretchr/testify/assert"
 )
 
-func MiddlewareStatsSpec(c gospec.Context) {
+func TestProcessedStats(t *testing.T) {
+	namespace := "prod"
+	setupTestConfigWithNamespace(namespace)
+	rc := Config.Client
+
+	count, _ := rc.Get("prod:stat:processed").Result()
+	countInt, _ := strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(0), countInt)
+
+	layout := "2006-01-02"
+	dayCount, _ := rc.Get("prod:stat:processed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ := strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(0), dayCountInt)
+
 	var job = (func(message *Msg) {
 		// noop
 	})
-
-	layout := "2006-01-02"
 	manager := newManager("myqueue", job, 1)
 	worker := newWorker(manager)
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
+	worker.process(message)
 
-	was := Config.Namespace
-	Config.Namespace = "prod:"
+	count, _ = rc.Get("prod:stat:processed").Result()
+	countInt, _ = strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(1), countInt)
 
-	c.Specify("increments processed stats", func() {
-		rc := Config.Client
+	dayCount, _ = rc.Get("prod:stat:processed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ = strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(1), dayCountInt)
+}
 
-		count, _ := rc.Get("prod:stat:processed").Result()
-		countInt, _ := strconv.ParseInt(count, 10, 64)
-		c.Expect(countInt, Equals, int64(0))
+func TestFailedStats(t *testing.T) {
+	layout := "2006-01-02"
+	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
 
-		dayCount, _ := rc.Get("prod:stat:processed:" + time.Now().UTC().Format(layout)).Result()
-		dayCountInt, _ := strconv.ParseInt(dayCount, 10, 64)
-		c.Expect(dayCountInt, Equals, int64(0))
+	namespace := "prod"
+	setupTestConfigWithNamespace(namespace)
 
-		worker.process(message)
-
-		count, _ = rc.Get("prod:stat:processed").Result()
-		countInt, _ = strconv.ParseInt(count, 10, 64)
-		c.Expect(countInt, Equals, int64(1))
-
-		dayCount, _ = rc.Get("prod:stat:processed:" + time.Now().UTC().Format(layout)).Result()
-		dayCountInt, _ = strconv.ParseInt(dayCount, 10, 64)
-		c.Expect(dayCountInt, Equals, int64(1))
+	var job = (func(message *Msg) {
+		panic("AHHHH")
 	})
 
-	c.Specify("failed job", func() {
-		var job = (func(message *Msg) {
-			panic("AHHHH")
-		})
+	manager := newManager("myqueue", job, 1)
+	worker := newWorker(manager)
 
-		manager := newManager("myqueue", job, 1)
-		worker := newWorker(manager)
+	rc := Config.Client
 
-		c.Specify("increments failed stats", func() {
-			rc := Config.Client
+	count, _ := rc.Get("prod:stat:failed").Result()
+	countInt, _ := strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(0), countInt)
 
-			count, _ := rc.Get("prod:stat:failed").Result()
-			countInt, _ := strconv.ParseInt(count, 10, 64)
-			c.Expect(countInt, Equals, int64(0))
+	dayCount, _ := rc.Get("prod:stat:failed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ := strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(0), dayCountInt)
 
-			dayCount, _ := rc.Get("prod:stat:failed:" + time.Now().UTC().Format(layout)).Result()
-			dayCountInt, _ := strconv.ParseInt(dayCount, 10, 64)
-			c.Expect(dayCountInt, Equals, int64(0))
+	worker.process(message)
 
-			worker.process(message)
+	count, _ = rc.Get("prod:stat:failed").Result()
+	countInt, _ = strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(1), countInt)
 
-			count, _ = rc.Get("prod:stat:failed").Result()
-			countInt, _ = strconv.ParseInt(count, 10, 64)
-			c.Expect(countInt, Equals, int64(1))
-
-			dayCount, _ = rc.Get("prod:stat:failed:" + time.Now().UTC().Format(layout)).Result()
-			dayCountInt, _ = strconv.ParseInt(dayCount, 10, 64)
-			c.Expect(dayCountInt, Equals, int64(1))
-		})
-	})
-
-	Config.Namespace = was
+	dayCount, _ = rc.Get("prod:stat:failed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ = strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(1), dayCountInt)
 }

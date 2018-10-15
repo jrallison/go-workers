@@ -2,118 +2,104 @@ package workers
 
 import (
 	"encoding/json"
+	"testing"
 
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
+	"github.com/stretchr/testify/assert"
 )
 
-func EnqueueSpec(c gospec.Context) {
-	was := Config.Namespace
-	Config.Namespace = "prod:"
+func TestEnqueue(t *testing.T) {
+	namespace := "prod"
+	setupTestConfigWithNamespace(namespace)
+	rc := Config.Client
 
-	c.Specify("Enqueue", func() {
-		rc := Config.Client
+	//makes the queue available
+	Enqueue("enqueue1", "Add", []int{1, 2})
 
-		c.Specify("makes the queue available", func() {
-			Enqueue("enqueue1", "Add", []int{1, 2})
+	found, _ := rc.SIsMember("prod:queues", "enqueue1").Result()
+	assert.True(t, found)
 
-			found, _ := rc.SIsMember("prod:queues", "enqueue1").Result()
-			c.Expect(found, IsTrue)
-		})
+	// adds a job to the queue
+	nb, _ := rc.LLen("prod:queue:enqueue2").Result()
+	assert.Equal(t, int64(0), nb)
 
-		c.Specify("adds a job to the queue", func() {
-			nb, _ := rc.LLen("prod:queue:enqueue2").Result()
-			c.Expect(nb, Equals, int64(0))
+	Enqueue("enqueue2", "Add", []int{1, 2})
 
-			Enqueue("enqueue2", "Add", []int{1, 2})
+	nb, _ = rc.LLen("prod:queue:enqueue2").Result()
+	assert.Equal(t, int64(1), nb)
 
-			nb, _ = rc.LLen("prod:queue:enqueue2").Result()
-			c.Expect(nb, Equals, int64(1))
-		})
+	//saves the arguments
+	Enqueue("enqueue3", "Compare", []string{"foo", "bar"})
 
-		c.Specify("saves the arguments", func() {
-			Enqueue("enqueue3", "Compare", []string{"foo", "bar"})
+	bytes, _ := rc.LPop("prod:queue:enqueue3").Result()
+	var result map[string]interface{}
+	json.Unmarshal([]byte(bytes), &result)
+	assert.Equal(t, "Compare", result["class"])
 
-			bytes, _ := rc.LPop("prod:queue:enqueue3").Result()
-			var result map[string]interface{}
-			json.Unmarshal([]byte(bytes), &result)
-			c.Expect(result["class"], Equals, "Compare")
+	args := result["args"].([]interface{})
+	assert.Equal(t, 2, len(args))
+	assert.Equal(t, "foo", args[0])
+	assert.Equal(t, "bar", args[1])
 
-			args := result["args"].([]interface{})
-			c.Expect(len(args), Equals, 2)
-			c.Expect(args[0], Equals, "foo")
-			c.Expect(args[1], Equals, "bar")
-		})
+	//has a jid
+	Enqueue("enqueue4", "Compare", []string{"foo", "bar"})
 
-		c.Specify("has a jid", func() {
-			Enqueue("enqueue4", "Compare", []string{"foo", "bar"})
+	bytes, _ = rc.LPop("prod:queue:enqueue4").Result()
+	json.Unmarshal([]byte(bytes), &result)
+	assert.Equal(t, "Compare", result["class"])
 
-			bytes, _ := rc.LPop("prod:queue:enqueue4").Result()
-			var result map[string]interface{}
-			json.Unmarshal([]byte(bytes), &result)
-			c.Expect(result["class"], Equals, "Compare")
+	jid := result["jid"].(string)
+	assert.Equal(t, 24, len(jid))
 
-			jid := result["jid"].(string)
-			c.Expect(len(jid), Equals, 24)
-		})
+	//has enqueued_at that is close to now
+	Enqueue("enqueue5", "Compare", []string{"foo", "bar"})
 
-		c.Specify("has enqueued_at that is close to now", func() {
-			Enqueue("enqueue5", "Compare", []string{"foo", "bar"})
+	bytes, _ = rc.LPop("prod:queue:enqueue5").Result()
+	json.Unmarshal([]byte(bytes), &result)
+	assert.Equal(t, "Compare", result["class"])
 
-			bytes, _ := rc.LPop("prod:queue:enqueue5").Result()
-			var result map[string]interface{}
-			json.Unmarshal([]byte(bytes), &result)
-			c.Expect(result["class"], Equals, "Compare")
+	ea := result["enqueued_at"].(float64)
+	assert.InDelta(t, nowToSecondsWithNanoPrecision(), ea, 0.1)
 
-			ea := result["enqueued_at"].(float64)
-			c.Expect(ea, Not(Equals), 0)
-			c.Expect(ea, IsWithin(0.1), nowToSecondsWithNanoPrecision())
-		})
+	// has retry and retry_count when set
+	EnqueueWithOptions("enqueue6", "Compare", []string{"foo", "bar"}, EnqueueOptions{RetryCount: 13, Retry: true})
 
-		c.Specify("has retry and retry_count when set", func() {
-			EnqueueWithOptions("enqueue6", "Compare", []string{"foo", "bar"}, EnqueueOptions{RetryCount: 13, Retry: true})
+	bytes, _ = rc.LPop("prod:queue:enqueue6").Result()
+	json.Unmarshal([]byte(bytes), &result)
+	assert.Equal(t, "Compare", result["class"])
 
-			bytes, _ := rc.LPop("prod:queue:enqueue6").Result()
-			var result map[string]interface{}
-			json.Unmarshal([]byte(bytes), &result)
-			c.Expect(result["class"], Equals, "Compare")
+	retry := result["retry"].(bool)
+	assert.True(t, retry)
 
-			retry := result["retry"].(bool)
-			c.Expect(retry, Equals, true)
+	retryCount := int(result["retry_count"].(float64))
+	assert.Equal(t, 13, retryCount)
+}
 
-			retryCount := int(result["retry_count"].(float64))
-			c.Expect(retryCount, Equals, 13)
-		})
-	})
+func TestEnqueueSpec(t *testing.T) {
+	namespace := "prod"
+	setupTestConfigWithNamespace(namespace)
+	rc := Config.Client
 
-	c.Specify("EnqueueIn", func() {
-		scheduleQueue := "prod:" + SCHEDULED_JOBS_KEY
-		rc := Config.Client
+	scheduleQueue := namespace + ":" + SCHEDULED_JOBS_KEY
 
-		c.Specify("has added a job in the scheduled queue", func() {
-			_, err := EnqueueIn("enqueuein1", "Compare", 10, map[string]interface{}{"foo": "bar"})
-			c.Expect(err, Equals, nil)
+	//has added a job in the scheduled queue
+	_, err := EnqueueIn("enqueuein1", "Compare", 10, map[string]interface{}{"foo": "bar"})
+	assert.Nil(t, err)
 
-			scheduledCount, _ := rc.ZCard(scheduleQueue).Result()
-			c.Expect(scheduledCount, Equals, int64(1))
+	scheduledCount, _ := rc.ZCard(scheduleQueue).Result()
+	assert.Equal(t, int64(1), scheduledCount)
 
-			rc.Del(scheduleQueue)
-		})
+	rc.Del(scheduleQueue)
 
-		c.Specify("has the correct 'queue'", func() {
-			_, err := EnqueueIn("enqueuein2", "Compare", 10, map[string]interface{}{"foo": "bar"})
-			c.Expect(err, Equals, nil)
+	//has the correct 'queue'
+	_, err = EnqueueIn("enqueuein2", "Compare", 10, map[string]interface{}{"foo": "bar"})
+	assert.Nil(t, err)
 
-			var data EnqueueData
-			elem, err := rc.ZRange(scheduleQueue, 0, -1).Result()
-			bytes := elem[0]
-			json.Unmarshal([]byte(bytes), &data)
+	var data EnqueueData
+	elem, err := rc.ZRange(scheduleQueue, 0, -1).Result()
+	bytes := elem[0]
+	json.Unmarshal([]byte(bytes), &data)
 
-			c.Expect(data.Queue, Equals, "enqueuein2")
+	assert.Equal(t, "enqueuein2", data.Queue)
 
-			rc.Del(scheduleQueue)
-		})
-	})
-
-	Config.Namespace = was
+	rc.Del(scheduleQueue)
 }

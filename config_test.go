@@ -1,100 +1,113 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func ConfigSpec(c gospec.Context) {
-	var recoverOnPanic = func(f func()) (err interface{}) {
-		defer func() {
-			if cause := recover(); cause != nil {
-				err = cause
+var recoverOnPanic = func(f func()) (err error) {
+	defer func() {
+		if cause := recover(); cause != nil {
+			var ok bool
+			err, ok = cause.(error)
+			if !ok {
+				err = fmt.Errorf("not error; %v", cause)
 			}
-		}()
+		}
+	}()
 
-		f()
+	f()
 
-		return
-	}
+	return
+}
 
-	c.Specify("sets redis pool size which defaults to 1", func() {
-		c.Expect(Config.Client.Options().PoolSize, Equals, 1)
+func TestRedisPoolConfig(t *testing.T) {
+	// Tests redis pool size which defaults to 1
+	Configure(map[string]string{
+		"server":  "localhost:6379",
+		"process": "2",
+	})
+	assert.Equal(t, 1, Config.Client.Options().PoolSize)
 
-		Configure(map[string]string{
-			"server":  "localhost:6379",
-			"process": "1",
-			"pool":    "20",
-		})
-
-		c.Expect(Config.Client.Options().PoolSize, Equals, 20)
+	Configure(map[string]string{
+		"server":  "localhost:6379",
+		"process": "1",
+		"pool":    "20",
 	})
 
-	c.Specify("can specify custom process", func() {
-		c.Expect(Config.processId, Equals, "1")
+	assert.Equal(t, 20, Config.Client.Options().PoolSize)
+}
 
-		Configure(map[string]string{
-			"server":  "localhost:6379",
-			"process": "2",
-		})
+func TestCustomProcessConfig(t *testing.T) {
+	Configure(map[string]string{
+		"server":  "localhost:6379",
+		"process": "1",
+	})
+	assert.Equal(t, "1", Config.processId)
 
-		c.Expect(Config.processId, Equals, "2")
+	Configure(map[string]string{
+		"server":  "localhost:6379",
+		"process": "2",
+	})
+	assert.Equal(t, "2", Config.processId)
+}
+
+func TestRequiresRedisConfig(t *testing.T) {
+	err := recoverOnPanic(func() {
+		Configure(map[string]string{"process": "2"})
 	})
 
-	c.Specify("requires a server or sentinel parameter", func() {
-		err := recoverOnPanic(func() {
-			Configure(map[string]string{"process": "2"})
-		})
+	assert.Error(t, err, "Configure requires a 'server' or 'sentinels' options, which identify either Redis instance or sentinels.")
+}
 
-		c.Expect(err, Equals, "Configure requires a 'server' or 'sentinels' options, which identify either Redis instance or sentinels.")
+func TestRequiresProcessConfig(t *testing.T) {
+	err := recoverOnPanic(func() {
+		Configure(map[string]string{"server": "localhost:6379"})
 	})
 
-	c.Specify("requires a process parameter", func() {
-		err := recoverOnPanic(func() {
-			Configure(map[string]string{"server": "localhost:6379"})
-		})
+	assert.Error(t, err, "Configure requires a 'process' option, which uniquely identifies this instance")
+}
 
-		c.Expect(err, Equals, "Configure requires a 'process' option, which uniquely identifies this instance")
+func TestAddsColonToNamespace(t *testing.T) {
+	Configure(map[string]string{
+		"server":  "localhost:6379",
+		"process": "1",
+	})
+	assert.Equal(t, "", Config.Namespace)
+
+	Configure(map[string]string{
+		"server":    "localhost:6379",
+		"process":   "1",
+		"namespace": "prod",
+	})
+	assert.Equal(t, "prod:", Config.Namespace)
+}
+
+func TestDefaultPoolIntervalConfig(t *testing.T) {
+	Configure(map[string]string{
+		"server":  "localhost:6379",
+		"process": "1",
 	})
 
-	c.Specify("adds ':' to the end of the namespace", func() {
-		c.Expect(Config.Namespace, Equals, "")
+	assert.Equal(t, 15, Config.PollInterval)
 
-		Configure(map[string]string{
-			"server":    "localhost:6379",
-			"process":   "1",
-			"namespace": "prod",
-		})
-
-		c.Expect(Config.Namespace, Equals, "prod:")
+	Configure(map[string]string{
+		"server":        "localhost:6379",
+		"process":       "1",
+		"poll_interval": "1",
 	})
 
-	c.Specify("defaults poll interval to 15 seconds", func() {
-		Configure(map[string]string{
-			"server":  "localhost:6379",
-			"process": "1",
-		})
+	assert.Equal(t, 1, Config.PollInterval)
+}
 
-		c.Expect(Config.PollInterval, Equals, 15)
+func TestSentinelConfig(t *testing.T) {
+	Configure(map[string]string{
+		"sentinels":     "localhost:26379,localhost:46379",
+		"process":       "1",
+		"poll_interval": "1",
 	})
 
-	c.Specify("allows customization of poll interval", func() {
-		Configure(map[string]string{
-			"server":        "localhost:6379",
-			"process":       "1",
-			"poll_interval": "1",
-		})
-
-		c.Expect(Config.PollInterval, Equals, 1)
-	})
-
-	c.Specify("configure sentinels", func() {
-		Configure(map[string]string{
-			"sentinels":     "localhost:26379,localhost:46379",
-			"process":       "1",
-			"poll_interval": "1",
-		})
-
-		c.Expect(Config.Client.Options().Addr, Equals, "FailoverClient")
-	})
+	assert.Equal(t, "FailoverClient", Config.Client.Options().Addr)
 }
