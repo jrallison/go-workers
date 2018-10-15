@@ -79,7 +79,7 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return "", err
 	}
 	queue = Config.Namespace + "queue:" + queue
-	_, err = rc.RPush(queue, bytes).Result()
+	_, err = rc.LPush(queue, bytes).Result()
 	if err != nil {
 		return "", err
 	}

@@ -103,3 +103,36 @@ func TestEnqueueSpec(t *testing.T) {
 
 	rc.Del(scheduleQueue)
 }
+
+func TestMultipleEnqueueOrder(t *testing.T) {
+	namespace := "prod"
+	setupTestConfigWithNamespace(namespace)
+	rc := Config.Client
+
+	var msg1, _ = NewMsg("{\"key\":\"1\"}")
+	_, err := Enqueue("testq1", "Compare", msg1.ToJson())
+	assert.Nil(t, err)
+
+	var msg2, _ = NewMsg("{\"key\":\"2\"}")
+	_, err = Enqueue("testq1", "Compare", msg2.ToJson())
+	assert.Nil(t, err)
+
+	len, _ := rc.LLen("prod:queue:testq1").Result()
+	assert.Equal(t, int64(2), len)
+
+	bytesMsg, err := rc.RPop("prod:queue:testq1").Result()
+	assert.Nil(t, err)
+	var data EnqueueData
+	json.Unmarshal([]byte(bytesMsg), &data)
+	actualMsg, err := NewMsg(data.Args.(string))
+	assert.Equal(t, msg1.Get("key"), actualMsg.Get("key"))
+
+	bytesMsg, err = rc.RPop("prod:queue:testq1").Result()
+	assert.Nil(t, err)
+	json.Unmarshal([]byte(bytesMsg), &data)
+	actualMsg, err = NewMsg(data.Args.(string))
+	assert.Equal(t, msg2.Get("key"), actualMsg.Get("key"))
+
+	len, _ = rc.LLen("prod:queue:testq1").Result()
+	assert.Equal(t, int64(0), len)
+}
