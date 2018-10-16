@@ -1,6 +1,8 @@
 package workers
 
 import (
+	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -29,7 +31,7 @@ func (w *worker) work(messages chan *Msg) {
 			atomic.StoreInt64(&w.startedAt, time.Now().UTC().Unix())
 			w.currentMsg = message
 
-			if w.process(message) {
+			if w.process(message) == nil {
 				w.manager.confirm <- message
 			}
 
@@ -54,15 +56,20 @@ func (w *worker) work(messages chan *Msg) {
 	}
 }
 
-func (w *worker) process(message *Msg) (acknowledge bool) {
-	acknowledge = true
-
+func (w *worker) process(message *Msg) (err error) {
 	defer func() {
-		recover()
+		if e := recover(); e != nil {
+			lerr, ok := e.(error)
+			if !ok {
+				err = errors.New(fmt.Sprintf("Unable to get error from recover(): %v", e))
+			} else {
+				err = lerr
+			}
+		}
 	}()
 
-	return w.manager.mids.call(w.manager.queueName(), message, func() {
-		w.manager.job(message)
+	return w.manager.mids.call(w.manager.queueName(), message, func() error {
+		return w.manager.job(message)
 	})
 }
 

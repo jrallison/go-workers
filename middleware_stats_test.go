@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -22,9 +23,11 @@ func TestProcessedStats(t *testing.T) {
 	dayCountInt, _ := strconv.ParseInt(dayCount, 10, 64)
 	assert.Equal(t, int64(0), dayCountInt)
 
-	var job = (func(message *Msg) {
+	var job = (func(message *Msg) error {
 		// noop
+		return nil
 	})
+
 	manager := newManager("myqueue", job, 1)
 	worker := newWorker(manager)
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
@@ -46,8 +49,8 @@ func TestFailedStats(t *testing.T) {
 	namespace := "prod"
 	setupTestConfigWithNamespace(namespace)
 
-	var job = (func(message *Msg) {
-		panic("AHHHH")
+	var job = (func(message *Msg) error {
+		panic(errors.New("AHHHH"))
 	})
 
 	manager := newManager("myqueue", job, 1)

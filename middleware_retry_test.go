@@ -1,14 +1,15 @@
 package workers
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-var panicingJob = (func(message *Msg) {
-	panic("AHHHH")
+var panicingJob = (func(message *Msg) error {
+	panic(errors.New("AHHHH"))
 })
 
 var wares = NewMiddleware(
@@ -23,13 +24,15 @@ func TestRetryQueue(t *testing.T) {
 	//puts messages in retry queue when they fail
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
 
 	retries, _ := rc.ZRange("prod:"+RETRY_KEY, 0, 1).Result()
+	assert.Equal(t, 1, len(retries))
 	assert.Equal(t, message.ToJson(), retries[0])
 }
 
@@ -40,8 +43,9 @@ func TestDisableRetries(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":false}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
@@ -57,8 +61,9 @@ func TestNoDefaultRetry(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\"}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
@@ -74,8 +79,9 @@ func TestNumericRetries(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":5}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
@@ -91,8 +97,9 @@ func TestHandleNewFailedMessages(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
@@ -126,8 +133,9 @@ func TestRecurringFailedMessages(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":10}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
@@ -157,8 +165,9 @@ func TestRecurringFailedMessagesWithMax(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":10,\"queue\":\"default\",\"error_message\":\"bam\",\"failed_at\":\"2013-07-20 14:03:42 UTC\",\"retry_count\":8}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
@@ -187,8 +196,9 @@ func TestRetryOnlyToMax(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true,\"retry_count\":25}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client
@@ -205,8 +215,9 @@ func TestRetryOnlyToCustomMax(t *testing.T) {
 
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":3,\"retry_count\":3}")
 
-	wares.call("myqueue", message, func() {
+	wares.call("myqueue", message, func() error {
 		worker.process(message)
+		return nil
 	})
 
 	rc := Config.Client

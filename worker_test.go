@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -12,17 +13,17 @@ var failMiddlewareCalled bool
 
 type testMiddleware struct{}
 
-func (l *testMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+func (l *testMiddleware) Call(queue string, message *Msg, next func() error) (result error) {
 	testMiddlewareCalled = true
 	return next()
 }
 
 type failMiddleware struct{}
 
-func (l *failMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+func (l *failMiddleware) Call(queue string, message *Msg, next func() error) (result error) {
 	failMiddlewareCalled = true
 	next()
-	return false
+	return errors.New("test error")
 }
 
 func confirm(manager *manager) (msg *Msg) {
@@ -40,8 +41,9 @@ func TestNewWorker(t *testing.T) {
 	setupTestConfig()
 	var processed = make(chan *Args)
 
-	var testJob = (func(message *Msg) {
+	var testJob = (func(message *Msg) error {
 		processed <- message.Args()
+		return nil
 	})
 
 	manager := newManager("myqueue", testJob, 1)
@@ -55,8 +57,9 @@ func TestWork(t *testing.T) {
 
 	var processed = make(chan *Args)
 
-	var testJob = (func(message *Msg) {
+	var testJob = (func(message *Msg) error {
 		processed <- message.Args()
+		return nil
 	})
 
 	manager := newManager("myqueue", testJob, 1)
@@ -110,8 +113,9 @@ func TestFailMiddleware(t *testing.T) {
 	setupTestConfig()
 
 	var processed = make(chan *Args)
-	var testJob = (func(message *Msg) {
+	var testJob = (func(message *Msg) error {
 		processed <- message.Args()
+		return nil
 	})
 
 	Middleware = NewMiddleware(
@@ -144,19 +148,41 @@ func TestFailMiddleware(t *testing.T) {
 	)
 }
 
-func TestRecover(t *testing.T) {
+func TestRecoverWithPanic(t *testing.T) {
 	setupTestConfig()
 
 	//recovers and confirms if job panics
-	var panicJob = (func(message *Msg) {
-		panic("AHHHHHHHHH")
+	var panicJob = (func(message *Msg) error {
+		panic(errors.New("AHHHHHHHHH"))
 	})
 
 	manager := newManager("myqueue", panicJob, 1)
 	worker := newWorker(manager)
 
 	messages := make(chan *Msg)
-	message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"]}")
+	message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"],\"retry\":true}")
+
+	go worker.work(messages)
+	messages <- message
+
+	assert.Equal(t, message, confirm(manager))
+
+	worker.quit()
+}
+
+func TestRecoverWithError(t *testing.T) {
+	setupTestConfig()
+
+	//recovers and confirms if job panics
+	var panicJob = (func(message *Msg) error {
+		return errors.New("AHHHHHHHHH")
+	})
+
+	manager := newManager("myqueue", panicJob, 1)
+	worker := newWorker(manager)
+
+	messages := make(chan *Msg)
+	message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"],\"retry\":true}")
 
 	go worker.work(messages)
 	messages <- message

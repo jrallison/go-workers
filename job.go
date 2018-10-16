@@ -1,3 +1,3 @@
 package workers
 
-type jobFunc func(message *Msg)
+type jobFunc func(message *Msg) error

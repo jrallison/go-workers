@@ -9,8 +9,9 @@ import (
 
 var called chan bool
 
-func myJob(message *Msg) {
+func myJob(message *Msg) error {
 	called <- true
+	return nil
 }
 
 func TestWorkers(t *testing.T) {
