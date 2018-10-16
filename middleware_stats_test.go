@@ -1,71 +1,78 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
+	"errors"
+	"strconv"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func MiddlewareStatsSpec(c gospec.Context) {
-	var job = (func(message *Msg) {
-		// noop
-	})
+func TestProcessedStats(t *testing.T) {
+	namespace := "prod"
+	setupTestConfigWithNamespace(namespace)
+	rc := Config.Client
+
+	count, _ := rc.Get("prod:stat:processed").Result()
+	countInt, _ := strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(0), countInt)
 
 	layout := "2006-01-02"
+	dayCount, _ := rc.Get("prod:stat:processed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ := strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(0), dayCountInt)
+
+	var job = (func(message *Msg) error {
+		// noop
+		return nil
+	})
+
 	manager := newManager("myqueue", job, 1)
 	worker := newWorker(manager)
 	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
+	worker.process(message)
 
-	was := Config.Namespace
-	Config.Namespace = "prod:"
+	count, _ = rc.Get("prod:stat:processed").Result()
+	countInt, _ = strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(1), countInt)
 
-	c.Specify("increments processed stats", func() {
-		conn := Config.Pool.Get()
-		defer conn.Close()
+	dayCount, _ = rc.Get("prod:stat:processed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ = strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(1), dayCountInt)
+}
 
-		count, _ := redis.Int(conn.Do("get", "prod:stat:processed"))
-		dayCount, _ := redis.Int(conn.Do("get", "prod:stat:processed:"+time.Now().UTC().Format(layout)))
+func TestFailedStats(t *testing.T) {
+	layout := "2006-01-02"
+	message, _ := NewMsg("{\"jid\":\"2\",\"retry\":true}")
 
-		c.Expect(count, Equals, 0)
-		c.Expect(dayCount, Equals, 0)
+	namespace := "prod"
+	setupTestConfigWithNamespace(namespace)
 
-		worker.process(message)
-
-		count, _ = redis.Int(conn.Do("get", "prod:stat:processed"))
-		dayCount, _ = redis.Int(conn.Do("get", "prod:stat:processed:"+time.Now().UTC().Format(layout)))
-
-		c.Expect(count, Equals, 1)
-		c.Expect(dayCount, Equals, 1)
+	var job = (func(message *Msg) error {
+		panic(errors.New("AHHHH"))
 	})
 
-	c.Specify("failed job", func() {
-		var job = (func(message *Msg) {
-			panic("AHHHH")
-		})
+	manager := newManager("myqueue", job, 1)
+	worker := newWorker(manager)
 
-		manager := newManager("myqueue", job, 1)
-		worker := newWorker(manager)
+	rc := Config.Client
 
-		c.Specify("increments failed stats", func() {
-			conn := Config.Pool.Get()
-			defer conn.Close()
+	count, _ := rc.Get("prod:stat:failed").Result()
+	countInt, _ := strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(0), countInt)
 
-			count, _ := redis.Int(conn.Do("get", "prod:stat:failed"))
-			dayCount, _ := redis.Int(conn.Do("get", "prod:stat:failed:"+time.Now().UTC().Format(layout)))
+	dayCount, _ := rc.Get("prod:stat:failed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ := strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(0), dayCountInt)
 
-			c.Expect(count, Equals, 0)
-			c.Expect(dayCount, Equals, 0)
+	worker.process(message)
 
-			worker.process(message)
+	count, _ = rc.Get("prod:stat:failed").Result()
+	countInt, _ = strconv.ParseInt(count, 10, 64)
+	assert.Equal(t, int64(1), countInt)
 
-			count, _ = redis.Int(conn.Do("get", "prod:stat:failed"))
-			dayCount, _ = redis.Int(conn.Do("get", "prod:stat:failed:"+time.Now().UTC().Format(layout)))
-
-			c.Expect(count, Equals, 1)
-			c.Expect(dayCount, Equals, 1)
-		})
-	})
-
-	Config.Namespace = was
+	dayCount, _ = rc.Get("prod:stat:failed:" + time.Now().UTC().Format(layout)).Result()
+	dayCountInt, _ = strconv.ParseInt(dayCount, 10, 64)
+	assert.Equal(t, int64(1), dayCountInt)
 }

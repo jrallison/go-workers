@@ -1,10 +1,13 @@
 package workers
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/go-redis/redis"
 )
 
 const (
@@ -14,43 +17,57 @@ const (
 
 type MiddlewareRetry struct{}
 
-func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (acknowledge bool) {
+func (r *MiddlewareRetry) processError(queue string, message *Msg, err error) error {
+	if retry(message) {
+		message.Set("queue", queue)
+		message.Set("error_message", fmt.Sprintf("%v", err))
+		retryCount := incrementRetry(message)
+
+		waitDuration := durationToSecondsWithNanoPrecision(
+			time.Duration(
+				secondsToDelay(retryCount),
+			) * time.Second,
+		)
+
+		rc := Config.Client
+		_, rcErr := rc.ZAdd(Config.Namespace+RETRY_KEY, redis.Z{
+			Score:  nowToSecondsWithNanoPrecision() + waitDuration,
+			Member: message.ToJson(),
+		}).Result()
+
+		// If we can't add the job to the retry queue,
+		// then we shouldn't acknowledge the job, otherwise
+		// it'll disappear into the void.
+		if rcErr != nil {
+			return rcErr
+		} else {
+			return nil
+		}
+	} else {
+		return err
+	}
+}
+
+func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() error) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			conn := Config.Pool.Get()
-			defer conn.Close()
-
-			if retry(message) {
-				message.Set("queue", queue)
-				message.Set("error_message", fmt.Sprintf("%v", e))
-				retryCount := incrementRetry(message)
-
-				waitDuration := durationToSecondsWithNanoPrecision(
-					time.Duration(
-						secondsToDelay(retryCount),
-					) * time.Second,
-				)
-
-				_, err := conn.Do(
-					"zadd",
-					Config.Namespace+RETRY_KEY,
-					nowToSecondsWithNanoPrecision()+waitDuration,
-					message.ToJson(),
-				)
-
-				// If we can't add the job to the retry queue,
-				// then we shouldn't acknowledge the job, otherwise
-				// it'll disappear into the void.
-				if err != nil {
-					acknowledge = false
-				}
+			lerr, ok := e.(error)
+			if !ok {
+				err = errors.New(fmt.Sprintf("Unable to get error from recover(): %v", e))
+			} else {
+				err = lerr
 			}
+		}
 
-			panic(e)
+		if err != nil {
+			err = r.processError(queue, message, err)
 		}
 	}()
 
-	acknowledge = next()
+	err = next()
+	if err != nil {
+		err = r.processError(queue, message, err)
+	}
 
 	return
 }

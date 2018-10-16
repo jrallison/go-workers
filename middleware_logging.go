@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"time"
@@ -8,7 +9,15 @@ import (
 
 type MiddlewareLogging struct{}
 
-func (l *MiddlewareLogging) Call(queue string, message *Msg, next func() bool) (acknowledge bool) {
+func (l *MiddlewareLogging) procesError(prefix string, start time.Time, err error) {
+	Logger.Println(prefix, "fail:", time.Since(start))
+
+	buf := make([]byte, 4096)
+	buf = buf[:runtime.Stack(buf, false)]
+	Logger.Printf("%s error: %v\n%s", prefix, err, buf)
+}
+
+func (l *MiddlewareLogging) Call(queue string, message *Msg, next func() error) (err error) {
 	prefix := fmt.Sprint(queue, " JID-", message.Jid())
 
 	start := time.Now()
@@ -17,17 +26,23 @@ func (l *MiddlewareLogging) Call(queue string, message *Msg, next func() bool) (
 
 	defer func() {
 		if e := recover(); e != nil {
-			Logger.Println(prefix, "fail:", time.Since(start))
+			lerr, ok := e.(error)
+			if !ok {
+				err = errors.New(fmt.Sprintf("Unable to get error from recover(): %v", e))
+			} else {
+				err = lerr
+			}
+		}
 
-			buf := make([]byte, 4096)
-			buf = buf[:runtime.Stack(buf, false)]
-			Logger.Printf("%s error: %v\n%s", prefix, e, buf)
-
-			panic(e)
+		if err != nil {
+			l.procesError(prefix, start, err)
 		}
 	}()
 
-	acknowledge = next()
+	err = next()
+	if err != nil {
+		l.procesError(prefix, start, err)
+	}
 
 	Logger.Println(prefix, "done:", time.Since(start))
 

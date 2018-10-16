@@ -1,10 +1,11 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
-
+	"errors"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var testMiddlewareCalled bool
@@ -12,17 +13,17 @@ var failMiddlewareCalled bool
 
 type testMiddleware struct{}
 
-func (l *testMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+func (l *testMiddleware) Call(queue string, message *Msg, next func() error) (result error) {
 	testMiddlewareCalled = true
 	return next()
 }
 
 type failMiddleware struct{}
 
-func (l *failMiddleware) Call(queue string, message *Msg, next func() bool) (result bool) {
+func (l *failMiddleware) Call(queue string, message *Msg, next func() error) (result error) {
 	failMiddlewareCalled = true
 	next()
-	return false
+	return errors.New("test error")
 }
 
 func confirm(manager *manager) (msg *Msg) {
@@ -36,104 +37,157 @@ func confirm(manager *manager) (msg *Msg) {
 	return
 }
 
-func WorkerSpec(c gospec.Context) {
+func TestNewWorker(t *testing.T) {
+	setupTestConfig()
 	var processed = make(chan *Args)
 
-	var testJob = (func(message *Msg) {
+	var testJob = (func(message *Msg) error {
 		processed <- message.Args()
+		return nil
 	})
 
 	manager := newManager("myqueue", testJob, 1)
 
-	c.Specify("newWorker", func() {
-		c.Specify("it returns an instance of worker with connection to manager", func() {
-			worker := newWorker(manager)
-			c.Expect(worker.manager, Equals, manager)
-		})
+	worker := newWorker(manager)
+	assert.Equal(t, manager, worker.manager)
+}
+
+func TestWork(t *testing.T) {
+	setupTestConfig()
+
+	var processed = make(chan *Args)
+
+	var testJob = (func(message *Msg) error {
+		processed <- message.Args()
+		return nil
 	})
 
-	c.Specify("work", func() {
-		worker := newWorker(manager)
-		messages := make(chan *Msg)
-		message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"]}")
+	manager := newManager("myqueue", testJob, 1)
 
-		c.Specify("calls job with message args", func() {
-			go worker.work(messages)
-			messages <- message
+	worker := newWorker(manager)
+	messages := make(chan *Msg)
+	message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"]}")
 
-			args, _ := (<-processed).Array()
-			<-manager.confirm
+	//calls job with message args
+	go worker.work(messages)
+	messages <- message
 
-			c.Expect(len(args), Equals, 2)
-			c.Expect(args[0], Equals, "foo")
-			c.Expect(args[1], Equals, "bar")
+	args, _ := (<-processed).Array()
+	<-manager.confirm
 
-			worker.quit()
-		})
+	assert.Equal(t, 2, len(args))
+	assert.Equal(t, "foo", args[0])
+	assert.Equal(t, "bar", args[1])
 
-		c.Specify("confirms job completed", func() {
-			go worker.work(messages)
-			messages <- message
+	worker.quit()
 
-			<-processed
+	//confirms job completed", func() {
+	go worker.work(messages)
+	messages <- message
 
-			c.Expect(confirm(manager), Equals, message)
+	<-processed
+	assert.Equal(t, message, confirm(manager))
 
-			worker.quit()
-		})
+	worker.quit()
 
-		c.Specify("runs defined middleware and confirms", func() {
-			Middleware.Append(&testMiddleware{})
+	//runs defined middleware and confirms
+	Middleware.Append(&testMiddleware{})
 
-			go worker.work(messages)
-			messages <- message
+	go worker.work(messages)
+	messages <- message
 
-			<-processed
-			c.Expect(confirm(manager), Equals, message)
-			c.Expect(testMiddlewareCalled, IsTrue)
+	<-processed
+	assert.Equal(t, message, confirm(manager))
+	assert.True(t, testMiddlewareCalled)
 
-			worker.quit()
+	worker.quit()
 
-			Middleware = NewMiddleware(
-				&MiddlewareLogging{},
-				&MiddlewareRetry{},
-				&MiddlewareStats{},
-			)
-		})
+	Middleware = NewMiddleware(
+		&MiddlewareLogging{},
+		&MiddlewareRetry{},
+		&MiddlewareStats{},
+	)
+}
 
-		c.Specify("doesn't confirm if middleware cancels acknowledgement", func() {
-			Middleware.Append(&failMiddleware{})
+func TestFailMiddleware(t *testing.T) {
+	setupTestConfig()
 
-			go worker.work(messages)
-			messages <- message
-
-			<-processed
-			c.Expect(confirm(manager), IsNil)
-			c.Expect(failMiddlewareCalled, IsTrue)
-
-			worker.quit()
-
-			Middleware = NewMiddleware(
-				&MiddlewareLogging{},
-				&MiddlewareRetry{},
-				&MiddlewareStats{},
-			)
-		})
-
-		c.Specify("recovers and confirms if job panics", func() {
-			var panicJob = (func(message *Msg) {
-				panic("AHHHHHHHHH")
-			})
-
-			manager := newManager("myqueue", panicJob, 1)
-			worker := newWorker(manager)
-
-			go worker.work(messages)
-			messages <- message
-
-			c.Expect(confirm(manager), Equals, message)
-
-			worker.quit()
-		})
+	var processed = make(chan *Args)
+	var testJob = (func(message *Msg) error {
+		processed <- message.Args()
+		return nil
 	})
+
+	Middleware = NewMiddleware(
+		&MiddlewareLogging{},
+		&MiddlewareRetry{},
+		&MiddlewareStats{},
+	)
+
+	//doesn't confirm if middleware cancels acknowledgement
+	Middleware.Append(&failMiddleware{})
+
+	manager := newManager("myqueue", testJob, 1)
+	worker := newWorker(manager)
+	messages := make(chan *Msg)
+	message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"]}")
+
+	go worker.work(messages)
+	messages <- message
+
+	<-processed
+	assert.Nil(t, confirm(manager))
+	assert.True(t, failMiddlewareCalled)
+
+	worker.quit()
+
+	Middleware = NewMiddleware(
+		&MiddlewareLogging{},
+		&MiddlewareRetry{},
+		&MiddlewareStats{},
+	)
+}
+
+func TestRecoverWithPanic(t *testing.T) {
+	setupTestConfig()
+
+	//recovers and confirms if job panics
+	var panicJob = (func(message *Msg) error {
+		panic(errors.New("AHHHHHHHHH"))
+	})
+
+	manager := newManager("myqueue", panicJob, 1)
+	worker := newWorker(manager)
+
+	messages := make(chan *Msg)
+	message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"],\"retry\":true}")
+
+	go worker.work(messages)
+	messages <- message
+
+	assert.Equal(t, message, confirm(manager))
+
+	worker.quit()
+}
+
+func TestRecoverWithError(t *testing.T) {
+	setupTestConfig()
+
+	//recovers and confirms if job panics
+	var panicJob = (func(message *Msg) error {
+		return errors.New("AHHHHHHHHH")
+	})
+
+	manager := newManager("myqueue", panicJob, 1)
+	worker := newWorker(manager)
+
+	messages := make(chan *Msg)
+	message, _ := NewMsg("{\"jid\":\"2309823\",\"args\":[\"foo\",\"bar\"],\"retry\":true}")
+
+	go worker.work(messages)
+	messages <- message
+
+	assert.Equal(t, message, confirm(manager))
+
+	worker.quit()
 }

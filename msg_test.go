@@ -1,38 +1,33 @@
 package workers
 
 import (
-	"github.com/customerio/gospec"
-	. "github.com/customerio/gospec"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func MsgSpec(c gospec.Context) {
-	c.Specify("NewMsg", func() {
-		c.Specify("unmarshals json", func() {
-			msg, _ := NewMsg("{\"hello\":\"world\",\"foo\":3}")
-			hello, _ := msg.Get("hello").String()
-			foo, _ := msg.Get("foo").Int()
+func TestNewMsg(t *testing.T) {
+	//unmarshals json
+	msg, _ := NewMsg("{\"hello\":\"world\",\"foo\":3}")
+	hello, _ := msg.Get("hello").String()
+	foo, _ := msg.Get("foo").Int()
 
-			c.Expect(hello, Equals, "world")
-			c.Expect(foo, Equals, 3)
-		})
+	assert.Equal(t, "world", hello)
+	assert.Equal(t, 3, foo)
 
-		c.Specify("returns an error if invalid json", func() {
-			msg, err := NewMsg("{\"hello:\"world\",\"foo\":3}")
+	//returns an error if invalid json
+	msg, err := NewMsg("{\"hello:\"world\",\"foo\":3}")
 
-			c.Expect(msg, IsNil)
-			c.Expect(err, Not(IsNil))
-		})
-	})
+	assert.Nil(t, msg)
+	assert.NotNil(t, err)
+}
 
-	c.Specify("Args", func() {
-		c.Specify("returns args key", func() {
-			msg, _ := NewMsg("{\"hello\":\"world\",\"args\":[\"foo\",\"bar\"]}")
-			c.Expect(msg.Args().ToJson(), Equals, "[\"foo\",\"bar\"]")
-		})
+func TestArgs(t *testing.T) {
+	//returns args key
+	msg, _ := NewMsg("{\"hello\":\"world\",\"args\":[\"foo\",\"bar\"]}")
+	assert.Equal(t, "[\"foo\",\"bar\"]", msg.Args().ToJson())
 
-		c.Specify("returns empty array if args key doesn't exist", func() {
-			msg, _ := NewMsg("{\"hello\":\"world\"}")
-			c.Expect(msg.Args().ToJson(), Equals, "[]")
-		})
-	})
+	//returns empty array if args key doesn't exist
+	msg, _ = NewMsg("{\"hello\":\"world\"}")
+	assert.Equal(t, "[]", msg.Args().ToJson())
 }
