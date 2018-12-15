@@ -5,7 +5,7 @@ import (
 
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 func EnqueueSpec(c gospec.Context) {
