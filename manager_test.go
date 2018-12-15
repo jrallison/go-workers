@@ -1,13 +1,14 @@
 package workers
 
 import (
-	"fmt"
+	"reflect"
+	"runtime"
 	"sync"
 	"time"
 
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 type customMid struct {
@@ -54,7 +55,9 @@ func ManagerSpec(c gospec.Context) {
 
 		c.Specify("sets job function", func() {
 			manager := newManager("myqueue", testJob, 10)
-			c.Expect(fmt.Sprint(manager.job), Equals, fmt.Sprint(testJob))
+			expected := runtime.FuncForPC(reflect.ValueOf(manager.job).Pointer()).Name()
+			actual := runtime.FuncForPC(reflect.ValueOf(testJob).Pointer()).Name()
+			c.Expect(expected, Equals, actual)
 		})
 
 		c.Specify("sets worker concurrency", func() {
