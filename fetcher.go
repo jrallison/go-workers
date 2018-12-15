@@ -152,5 +152,5 @@ func (f *fetch) inprogressMessages() []string {
 }
 
 func (f *fetch) inprogressQueue() string {
-	return fmt.Sprint(f.queue, ":", Config.processId, ":inprogress")
+	return fmt.Sprint(f.queue, ":", Config.ProcessId, ":inprogress")
 }

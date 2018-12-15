@@ -8,7 +8,7 @@ import (
 )
 
 type config struct {
-	processId    string
+	ProcessId    string
 	Namespace    string
 	PollInterval int
 	Pool         *redis.Pool
@@ -73,8 +73,10 @@ func Configure(options map[string]string) {
 				return err
 			},
 		},
-		func(queue string) Fetcher {
-			return NewFetch(queue, make(chan *Msg), make(chan bool))
-		},
+		DefaultFetch,
 	}
+}
+
+func DefaultFetch(queue string) Fetcher {
+	return NewFetch(queue, make(chan *Msg), make(chan bool))
 }
