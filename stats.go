@@ -94,7 +94,7 @@ func getStats() stats {
 	r, err := conn.Do("exec")
 
 	if err != nil {
-		Logger.Println("couldn't retrieve stats:", err)
+		Logger.Errorln("failed to retrieve stats:", err)
 	}
 
 	results := r.([]interface{})
