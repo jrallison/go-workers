@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	DEFAULT_MAX_RETRY = 25
+	DEFAULT_MAX_RETRY = 5
 	LAYOUT            = "2006-01-02 15:04:05 MST"
 )
 
