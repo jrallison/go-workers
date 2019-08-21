@@ -3,9 +3,7 @@ package workers
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"sync"
 )
 
@@ -13,8 +11,6 @@ const (
 	RETRY_KEY          = "goretry"
 	SCHEDULED_JOBS_KEY = "schedule"
 )
-
-var Logger WorkersLogger = log.New(os.Stdout, "workers: ", log.Ldate|log.Lmicroseconds)
 
 var managers = make(map[string]*manager)
 var schedule *scheduled
@@ -88,10 +84,10 @@ func Quit() {
 func StatsServer(port int) {
 	http.HandleFunc("/stats", Stats)
 
-	Logger.Println("Stats are available at", fmt.Sprint("http://localhost:", port, "/stats"))
+	Logger.Infoln("Stats are available at", fmt.Sprint("http://localhost:", port, "/stats"))
 
 	if err := http.ListenAndServe(fmt.Sprint(":", port), nil); err != nil {
-		Logger.Println(err)
+		Logger.Error("failed to start stats server", err)
 	}
 }
 

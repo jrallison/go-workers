@@ -32,6 +32,6 @@ func incrementStats(metric string) {
 	conn.Send("incr", Config.Namespace+"stat:"+metric+":"+today)
 
 	if _, err := conn.Do("exec"); err != nil {
-		Logger.Println("couldn't save stats:", err)
+		Logger.Errorln("failed to save stats:", err)
 	}
 }

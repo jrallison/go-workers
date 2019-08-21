@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -22,9 +24,19 @@ type EnqueueData struct {
 }
 
 type EnqueueOptions struct {
-	RetryCount int     `json:"retry_count,omitempty"`
-	Retry      bool    `json:"retry,omitempty"`
-	At         float64 `json:"at,omitempty"`
+	RetryCount        int               `json:"retry_count,omitempty"`
+	Retry             bool              `json:"retry,omitempty"`
+	RetryMax          int               `json:"retry_max,omitempty"`
+	At                float64           `json:"at,omitempty"`
+	RetryOptions      RetryOptions      `json:"retry_options,omitempty"`
+	ConnectionOptions map[string]string `json:"connection_options,omitempty"`
+}
+
+type RetryOptions struct {
+	Exp      int `json:"exp"`
+	MinDelay int `json:"min_delay"`
+	MaxDelay int `json:"max_delay"`
+	MaxRand  int `json:"max_rand"`
 }
 
 func generateJid() string {
@@ -70,7 +82,12 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return data.Jid, err
 	}
 
-	conn := Config.Pool.Get()
+	var conn redis.Conn
+	if len(opts.ConnectionOptions) == 0 {
+		conn = Config.Pool.Get()
+	} else {
+		conn = GetConnectionPool(opts.ConnectionOptions).Get()
+	}
 	defer conn.Close()
 
 	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
@@ -78,7 +95,7 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return "", err
 	}
 	queue = Config.Namespace + "queue:" + queue
-	_, err = conn.Do("rpush", queue, bytes)
+	_, err = conn.Do("lpush", queue, bytes)
 	if err != nil {
 		return "", err
 	}

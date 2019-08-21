@@ -72,8 +72,8 @@ func EnqueueSpec(c gospec.Context) {
 			c.Expect(ea, IsWithin(0.1), nowToSecondsWithNanoPrecision())
 		})
 
-		c.Specify("has retry and retry_count when set", func() {
-			EnqueueWithOptions("enqueue6", "Compare", []string{"foo", "bar"}, EnqueueOptions{RetryCount: 13, Retry: true})
+		c.Specify("has retry and retry_max when set", func() {
+			EnqueueWithOptions("enqueue6", "Compare", []string{"foo", "bar"}, EnqueueOptions{RetryMax: 13, Retry: true})
 
 			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue6"))
 			var result map[string]interface{}
@@ -83,8 +83,35 @@ func EnqueueSpec(c gospec.Context) {
 			retry := result["retry"].(bool)
 			c.Expect(retry, Equals, true)
 
-			retryCount := int(result["retry_count"].(float64))
-			c.Expect(retryCount, Equals, 13)
+			retryMax := int(result["retry_max"].(float64))
+			c.Expect(retryMax, Equals, 13)
+		})
+
+		c.Specify("has retry_options when set", func() {
+			EnqueueWithOptions(
+				"enqueue7", "Compare", []string{"foo", "bar"},
+				EnqueueOptions{
+					RetryMax: 13,
+					Retry:    true,
+					RetryOptions: RetryOptions{
+						Exp:      2,
+						MinDelay: 0,
+						MaxDelay: 60,
+						MaxRand:  30,
+					},
+				})
+
+			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue7"))
+			var result map[string]interface{}
+			json.Unmarshal(bytes, &result)
+			c.Expect(result["class"], Equals, "Compare")
+
+			retryOptions := result["retry_options"].(map[string]interface{})
+			c.Expect(len(retryOptions), Equals, 4)
+			c.Expect(retryOptions["exp"].(float64), Equals, float64(2))
+			c.Expect(retryOptions["min_delay"].(float64), Equals, float64(0))
+			c.Expect(retryOptions["max_delay"].(float64), Equals, float64(60))
+			c.Expect(retryOptions["max_rand"].(float64), Equals, float64(30))
 		})
 	})
 

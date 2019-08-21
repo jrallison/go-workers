@@ -1,8 +1,9 @@
 package workers
 
 import (
-	"github.com/bitly/go-simplejson"
 	"reflect"
+
+	"github.com/bitly/go-simplejson"
 )
 
 type data struct {
@@ -39,7 +40,7 @@ func (d *data) ToJson() string {
 	json, err := d.Encode()
 
 	if err != nil {
-		Logger.Println("ERR: Couldn't generate json from", d, ":", err)
+		Logger.Errorln("failed to generate json from", d, ":", err)
 	}
 
 	return string(json)

@@ -32,7 +32,7 @@ func (m *manager) prepare() {
 }
 
 func (m *manager) quit() {
-	Logger.Println("quitting queue", m.queueName(), "(waiting for", m.processing(), "/", len(m.workers), "workers).")
+	Logger.Infoln("quitting queue", m.queueName(), "(waiting for", m.processing(), "/", len(m.workers), "workers).")
 	m.prepare()
 
 	m.workersM.Lock()
@@ -50,7 +50,7 @@ func (m *manager) quit() {
 }
 
 func (m *manager) manage() {
-	Logger.Println("processing queue", m.queueName(), "with", m.concurrency, "workers.")
+	Logger.Infoln("processing queue", m.queueName(), "with", m.concurrency, "workers.")
 
 	go m.fetch.Fetch()
 
@@ -77,7 +77,7 @@ func (m *manager) loadWorkers() {
 func (m *manager) processing() (count int) {
 	m.workersM.Lock()
 	for _, worker := range m.workers {
-		if worker.processing() {
+		if worker != nil && worker.processing() {
 			count++
 		}
 	}
