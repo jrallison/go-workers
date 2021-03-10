@@ -18,7 +18,6 @@ type config struct {
 var Config *config
 
 func Configure(options map[string]string) {
-	var poolSize int
 	var namespace string
 	var pollInterval int
 
