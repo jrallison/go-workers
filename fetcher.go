@@ -1,10 +1,9 @@
 package workers
 
 import (
+	"context"
 	"fmt"
 	"time"
-
-	"github.com/garyburd/redigo/redis"
 )
 
 type Fetcher interface {
@@ -80,14 +79,11 @@ func (f *fetch) Fetch() {
 }
 
 func (f *fetch) tryFetchMessage() {
-	conn := Config.Pool.Get()
-	defer conn.Close()
-
-	message, err := redis.String(conn.Do("brpoplpush", f.queue, f.inprogressQueue(), 1))
+	message, err := Config.Redis.BRPopLPush(context.Background(), f.queue, f.inprogressQueue(), 1*time.Second).Result()
 
 	if err != nil {
 		// If redis returns null, the queue is empty. Just ignore the error.
-		if err.Error() != "redigo: nil returned" {
+		if err.Error() != "redis: nil" {
 			Logger.Println("ERR: ", err)
 			time.Sleep(1 * time.Second)
 		}
@@ -108,9 +104,7 @@ func (f *fetch) sendMessage(message string) {
 }
 
 func (f *fetch) Acknowledge(message *Msg) {
-	conn := Config.Pool.Get()
-	defer conn.Close()
-	conn.Do("lrem", f.inprogressQueue(), -1, message.OriginalJson())
+	Config.Redis.LRem(context.Background(), f.inprogressQueue(), -1, message.OriginalJson())
 }
 
 func (f *fetch) Messages() chan *Msg {
@@ -140,10 +134,11 @@ func (f *fetch) Closed() bool {
 }
 
 func (f *fetch) inprogressMessages() []string {
-	conn := Config.Pool.Get()
-	defer conn.Close()
+	// conn := Config.Pool.Get()
+	// defer conn.Close()
 
-	messages, err := redis.Strings(conn.Do("lrange", f.inprogressQueue(), 0, -1))
+	// messages, err := redis.Strings(conn.Do("lrange", f.inprogressQueue(), 0, -1))
+	messages, err := Config.Redis.LRange(context.Background(), f.inprogressQueue(), 0, -1).Result()
 	if err != nil {
 		Logger.Println("ERR: ", err)
 	}

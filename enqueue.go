@@ -1,11 +1,14 @@
 package workers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/go-redis/redis"
 )
 
 const (
@@ -70,15 +73,12 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return data.Jid, err
 	}
 
-	conn := Config.Pool.Get()
-	defer conn.Close()
-
-	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
+	_, err = Config.Redis.SAdd(context.Background(), Config.Namespace+"queues", queue).Result()
 	if err != nil {
 		return "", err
 	}
 	queue = Config.Namespace + "queue:" + queue
-	_, err = conn.Do("rpush", queue, bytes)
+	_, err = Config.Redis.RPush(context.Background(), queue, bytes).Result()
 	if err != nil {
 		return "", err
 	}
@@ -87,13 +87,10 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 }
 
 func enqueueAt(at float64, bytes []byte) error {
-	conn := Config.Pool.Get()
-	defer conn.Close()
-
-	_, err := conn.Do(
-		"zadd",
-		Config.Namespace+SCHEDULED_JOBS_KEY, at, bytes,
-	)
+	_, err := Config.Redis.ZAdd(context.Background(), Config.Namespace+SCHEDULED_JOBS_KEY, &redis.Z{
+		Member: bytes,
+		Score:  at,
+	}).Result()
 	if err != nil {
 		return err
 	}

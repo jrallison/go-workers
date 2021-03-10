@@ -1,10 +1,13 @@
 package workers
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/go-redis/redis"
 )
 
 const (
@@ -17,9 +20,6 @@ type MiddlewareRetry struct{}
 func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (acknowledge bool) {
 	defer func() {
 		if e := recover(); e != nil {
-			conn := Config.Pool.Get()
-			defer conn.Close()
-
 			if retry(message) {
 				message.Set("queue", queue)
 				message.Set("error_message", fmt.Sprintf("%v", e))
@@ -31,12 +31,10 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 					) * time.Second,
 				)
 
-				_, err := conn.Do(
-					"zadd",
-					Config.Namespace+RETRY_KEY,
-					nowToSecondsWithNanoPrecision()+waitDuration,
-					message.ToJson(),
-				)
+				_, err := Config.Redis.ZAdd(context.Background(), Config.Namespace+RETRY_KEY, &redis.Z{
+					Member: message.ToJson(),
+					Score:  nowToSecondsWithNanoPrecision() + waitDuration,
+				}).Result()
 
 				// If we can't add the job to the retry queue,
 				// then we shouldn't acknowledge the job, otherwise

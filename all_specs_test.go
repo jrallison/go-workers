@@ -1,9 +1,11 @@
 package workers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/customerio/gospec"
+	"github.com/go-redis/redis"
 )
 
 // You will need to list every spec in a TestXxx method like this,
@@ -19,15 +21,16 @@ func TestAllSpecs(t *testing.T) {
 
 	r.BeforeEach = func() {
 		Configure(map[string]string{
-			"server":   "localhost:6379",
+			"server":   "localhost:7001,localhost:7002,localhost:7003,localhost:7004,localhost:7005,localhost:7006",
 			"process":  "1",
-			"database": "15",
+			"database": "0",
 			"pool":     "1",
 		})
 
-		conn := Config.Pool.Get()
-		conn.Do("flushdb")
-		conn.Close()
+		Config.Redis.ForEachMaster(context.Background(),
+			func(ctx context.Context, client *redis.Client) error {
+				return client.FlushAll(ctx).Err()
+			})
 	}
 
 	// List all specs here

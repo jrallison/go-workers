@@ -1,10 +1,10 @@
 package workers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 )
 
 type stats struct {
@@ -22,6 +22,14 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	jobs := make(map[string][]*map[string]interface{})
 	enqueued := make(map[string]string)
 
+	stats := stats{
+		0,
+		0,
+		nil,
+		nil,
+		0,
+	}
+
 	for _, m := range managers {
 		queue := m.queueName()
 		jobs[queue] = make([]*map[string]interface{}, 0)
@@ -38,59 +46,15 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
+	stats.Jobs = jobs
 
-	stats := stats{
-		0,
-		0,
-		jobs,
-		enqueued,
-		0,
+	stats.Processed, _ = Config.Redis.Get(context.Background(), Config.Namespace+"stat:processed").Int()
+	stats.Failed, _ = Config.Redis.Get(context.Background(), Config.Namespace+"stat:failed").Int()
+	stats.Retries = Config.Redis.ZCard(context.Background(), Config.Namespace+RETRY_KEY).Val()
+	for key := range enqueued {
+		enqueued[key] = Config.Redis.LLen(context.Background(), fmt.Sprintf("%squeue:%s", Config.Namespace, key)).String()
 	}
-
-	conn := Config.Pool.Get()
-	defer conn.Close()
-
-	conn.Send("multi")
-	conn.Send("get", Config.Namespace+"stat:processed")
-	conn.Send("get", Config.Namespace+"stat:failed")
-	conn.Send("zcard", Config.Namespace+RETRY_KEY)
-
-	for key, _ := range enqueued {
-		conn.Send("llen", fmt.Sprintf("%squeue:%s", Config.Namespace, key))
-	}
-
-	r, err := conn.Do("exec")
-
-	if err != nil {
-		Logger.Println("couldn't retrieve stats:", err)
-	}
-
-	results := r.([]interface{})
-	if len(results) == (3 + len(enqueued)) {
-		for index, result := range results {
-			if index == 0 && result != nil {
-				stats.Processed, _ = strconv.Atoi(string(result.([]byte)))
-				continue
-			}
-			if index == 1 && result != nil {
-				stats.Failed, _ = strconv.Atoi(string(result.([]byte)))
-				continue
-			}
-
-			if index == 2 && result != nil {
-				stats.Retries = result.(int64)
-				continue
-			}
-
-			queueIndex := 0
-			for key, _ := range enqueued {
-				if queueIndex == (index - 3) {
-					enqueued[key] = fmt.Sprintf("%d", result.(int64))
-				}
-				queueIndex++
-			}
-		}
-	}
+	stats.Enqueued = enqueued
 
 	body, _ := json.MarshalIndent(stats, "", "  ")
 	fmt.Fprintln(w, string(body))

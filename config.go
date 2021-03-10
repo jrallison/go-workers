@@ -2,16 +2,16 @@ package workers
 
 import (
 	"strconv"
-	"time"
+	"strings"
 
-	"github.com/garyburd/redigo/redis"
+	"github.com/go-redis/redis"
 )
 
 type config struct {
 	processId    string
 	Namespace    string
 	PollInterval int
-	Pool         *redis.Pool
+	Redis        *redis.ClusterClient
 	Fetch        func(queue string) Fetcher
 }
 
@@ -31,9 +31,6 @@ func Configure(options map[string]string) {
 	if options["pool"] == "" {
 		options["pool"] = "1"
 	}
-	if options["namespace"] != "" {
-		namespace = options["namespace"] + ":"
-	}
 	if seconds, err := strconv.Atoi(options["poll_interval"]); err == nil {
 		pollInterval = seconds
 	} else {
@@ -41,40 +38,23 @@ func Configure(options map[string]string) {
 	}
 
 	poolSize, _ = strconv.Atoi(options["pool"])
+	namespace = "{worker}:"
 
 	Config = &config{
 		options["process"],
 		namespace,
 		pollInterval,
-		&redis.Pool{
-			MaxIdle:     poolSize,
-			IdleTimeout: 240 * time.Second,
-			Dial: func() (redis.Conn, error) {
-				c, err := redis.Dial("tcp", options["server"])
-				if err != nil {
-					return nil, err
-				}
-				if options["password"] != "" {
-					if _, err := c.Do("AUTH", options["password"]); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
-				if options["database"] != "" {
-					if _, err := c.Do("SELECT", options["database"]); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
-				return c, err
-			},
-			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-				_, err := c.Do("PING")
-				return err
-			},
-		},
+		newRedisClient(options["server"], poolSize),
 		func(queue string) Fetcher {
 			return NewFetch(queue, make(chan *Msg), make(chan bool))
 		},
 	}
+}
+
+func newRedisClient(addr string, pooSize int) *redis.ClusterClient {
+	cfg := &redis.ClusterOptions{
+		Addrs: strings.Split(addr, ","),
+	}
+	client := redis.NewClusterClient(cfg)
+	return client
 }
