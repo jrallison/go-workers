@@ -28,30 +28,26 @@ func Configure(options map[string]string) {
 	if options["process"] == "" {
 		panic("Configure requires a 'process' option, which uniquely identifies this instance")
 	}
-	if options["pool"] == "" {
-		options["pool"] = "1"
-	}
 	if seconds, err := strconv.Atoi(options["poll_interval"]); err == nil {
 		pollInterval = seconds
 	} else {
 		pollInterval = 15
 	}
 
-	poolSize, _ = strconv.Atoi(options["pool"])
 	namespace = "{worker}:"
 
 	Config = &config{
 		options["process"],
 		namespace,
 		pollInterval,
-		newRedisClient(options["server"], poolSize),
+		newRedisClient(options["server"]),
 		func(queue string) Fetcher {
 			return NewFetch(queue, make(chan *Msg), make(chan bool))
 		},
 	}
 }
 
-func newRedisClient(addr string, pooSize int) *redis.ClusterClient {
+func newRedisClient(addr string) *redis.ClusterClient {
 	cfg := &redis.ClusterOptions{
 		Addrs: strings.Split(addr, ","),
 	}
