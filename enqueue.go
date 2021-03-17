@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -73,12 +72,12 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return data.Jid, err
 	}
 
-	_, err = Config.Redis.SAdd(context.Background(), Config.Namespace+"queues", queue).Result()
+	_, err = Config.Redis.SAdd(Config.Namespace+"queues", queue).Result()
 	if err != nil {
 		return "", err
 	}
 	queue = Config.Namespace + "queue:" + queue
-	_, err = Config.Redis.RPush(context.Background(), queue, bytes).Result()
+	_, err = Config.Redis.RPush(queue, bytes).Result()
 	if err != nil {
 		return "", err
 	}
@@ -87,7 +86,7 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 }
 
 func enqueueAt(at float64, bytes []byte) error {
-	_, err := Config.Redis.ZAdd(context.Background(), Config.Namespace+SCHEDULED_JOBS_KEY, &redis.Z{
+	_, err := Config.Redis.ZAdd(Config.Namespace+SCHEDULED_JOBS_KEY, &redis.Z{
 		Member: bytes,
 		Score:  at,
 	}).Result()

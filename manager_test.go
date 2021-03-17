@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -83,8 +82,8 @@ func ManagerSpec(c gospec.Context) {
 		c.Specify("coordinates processing of queue messages", func() {
 			manager := newManager("manager1", testJob, 10)
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager1", message.ToJson())
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager1", message2.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager1", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager1", message2.ToJson())
 
 			manager.start()
 
@@ -93,7 +92,7 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.quit()
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:manager1").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:manager1").Result()
 			c.Expect(len, Equals, int64(0))
 		})
 
@@ -114,9 +113,9 @@ func ManagerSpec(c gospec.Context) {
 			manager := newManager("manager1", slowJob, 10)
 
 			for i := 0; i < 9; i++ {
-				Config.Redis.LPush(context.Background(), "{worker}:queue:manager1", message.ToJson())
+				Config.Redis.LPush("{worker}:queue:manager1", message.ToJson())
 			}
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager1", sentinel.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager1", sentinel.ToJson())
 
 			manager.start()
 			for i := 0; i < 9; i++ {
@@ -124,7 +123,7 @@ func ManagerSpec(c gospec.Context) {
 			}
 			manager.quit()
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:manager1").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:manager1").Result()
 			c.Expect(len, Equals, int64(0))
 			c.Expect(drained, Equals, true)
 		})
@@ -142,9 +141,9 @@ func ManagerSpec(c gospec.Context) {
 			manager2 := newManager("manager2", testJob, 10, &mid2)
 			manager3 := newManager("manager3", testJob, 10, &mid3)
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager1", message.ToJson())
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager2", message.ToJson())
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager3", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager1", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager2", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager3", message.ToJson())
 
 			manager1.start()
 			manager2.start()
@@ -180,12 +179,12 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.prepare()
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager2", message.ToJson())
-			Config.Redis.LPush(context.Background(), "{worker}:queue:manager2", message2.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager2", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:manager2", message2.ToJson())
 
 			manager.quit()
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:manager2").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:manager2").Result()
 			c.Expect(len, Equals, int64(2))
 		})
 	})

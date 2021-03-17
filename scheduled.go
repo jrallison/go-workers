@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +40,7 @@ func (s *scheduled) poll() {
 	for _, key := range s.keys {
 		key = Config.Namespace + key
 		for {
-			messages, _ := Config.Redis.ZRangeByScore(context.Background(), key, &redis.ZRangeBy{
+			messages, _ := Config.Redis.ZRangeByScore(key, &redis.ZRangeBy{
 				Min:    "-inf",
 				Max:    strconv.FormatFloat(now, 'f', 0, 64),
 				Offset: 0,
@@ -54,11 +53,11 @@ func (s *scheduled) poll() {
 
 			message, _ := NewMsg(messages[0])
 
-			if removed, _ := Config.Redis.ZRem(context.Background(), key, messages[0]).Result(); removed != 0 {
+			if removed, _ := Config.Redis.ZRem(key, messages[0]).Result(); removed != 0 {
 				queue, _ := message.Get("queue").String()
 				queue = strings.TrimPrefix(queue, Config.Namespace)
 				message.Set("enqueued_at", nowToSecondsWithNanoPrecision())
-				Config.Redis.LPush(context.Background(), Config.Namespace+"queue:"+queue, message.ToJson())
+				Config.Redis.LPush(Config.Namespace+"queue:"+queue, message.ToJson())
 			}
 		}
 	}

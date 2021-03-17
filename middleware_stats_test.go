@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"time"
 
 	"github.com/customerio/gospec"
@@ -22,16 +21,16 @@ func MiddlewareStatsSpec(c gospec.Context) {
 	was := Config.Namespace
 
 	c.Specify("increments processed stats", func() {
-		count, _ := Config.Redis.Get(context.Background(), "{worker}:stat:processed").Result()
-		dayCount, _ := Config.Redis.Get(context.Background(), "{worker}:stat:processed:"+time.Now().UTC().Format(layout)).Result()
+		count, _ := Config.Redis.Get("{worker}:stat:processed").Result()
+		dayCount, _ := Config.Redis.Get("{worker}:stat:processed:" + time.Now().UTC().Format(layout)).Result()
 
 		c.Expect(count, Equals, "")
 		c.Expect(dayCount, Equals, "")
 
 		worker.process(message)
 
-		count, _ = Config.Redis.Get(context.Background(), "{worker}:stat:processed").Result()
-		dayCount, _ = Config.Redis.Get(context.Background(), "{worker}:stat:processed:"+time.Now().UTC().Format(layout)).Result()
+		count, _ = Config.Redis.Get("{worker}:stat:processed").Result()
+		dayCount, _ = Config.Redis.Get("{worker}:stat:processed:" + time.Now().UTC().Format(layout)).Result()
 
 		c.Expect(count, Equals, "1")
 		c.Expect(dayCount, Equals, "1")
@@ -46,16 +45,16 @@ func MiddlewareStatsSpec(c gospec.Context) {
 		worker := newWorker(manager)
 
 		c.Specify("increments failed stats", func() {
-			count, _ := Config.Redis.Get(context.Background(), "{worker}:stat:failed").Result()
-			dayCount, _ := Config.Redis.Get(context.Background(), "{worker}:stat:failed:"+time.Now().UTC().Format(layout)).Result()
+			count, _ := Config.Redis.Get("{worker}:stat:failed").Result()
+			dayCount, _ := Config.Redis.Get("{worker}:stat:failed:" + time.Now().UTC().Format(layout)).Result()
 
 			c.Expect(count, Equals, "")
 			c.Expect(dayCount, Equals, "")
 
 			worker.process(message)
 
-			count, _ = Config.Redis.Get(context.Background(), "{worker}:stat:failed").Result()
-			dayCount, _ = Config.Redis.Get(context.Background(), "{worker}:stat:failed:"+time.Now().UTC().Format(layout)).Result()
+			count, _ = Config.Redis.Get("{worker}:stat:failed").Result()
+			dayCount, _ = Config.Redis.Get("{worker}:stat:failed:" + time.Now().UTC().Format(layout)).Result()
 
 			c.Expect(count, Equals, "1")
 			c.Expect(dayCount, Equals, "1")

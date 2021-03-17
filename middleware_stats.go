@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"time"
 )
 
@@ -26,10 +25,10 @@ func incrementStats(metric string) {
 	today := time.Now().UTC().Format("2006-01-02")
 
 	p := Config.Redis.Pipeline()
-	p.Incr(context.Background(), Config.Namespace+"stat:"+metric)
-	p.Incr(context.Background(), Config.Namespace+"stat:"+metric+":"+today)
+	p.Incr(Config.Namespace + "stat:" + metric)
+	p.Incr(Config.Namespace + "stat:" + metric + ":" + today)
 
-	if _, err := p.Exec(context.Background()); err != nil {
+	if _, err := p.Exec(); err != nil {
 		Logger.Println("couldn't save stats:", err)
 	}
 }

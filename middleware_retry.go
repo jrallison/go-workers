@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"math/rand"
@@ -31,10 +30,11 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 					) * time.Second,
 				)
 
-				_, err := Config.Redis.ZAdd(context.Background(), Config.Namespace+RETRY_KEY, &redis.Z{
+				z := &redis.Z{
 					Member: message.ToJson(),
 					Score:  nowToSecondsWithNanoPrecision() + waitDuration,
-				}).Result()
+				}
+				_, err := Config.Redis.ZAdd(Config.Namespace+RETRY_KEY, z).Result()
 
 				// If we can't add the job to the retry queue,
 				// then we shouldn't acknowledge the job, otherwise

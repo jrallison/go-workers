@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -48,11 +47,11 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	}
 	stats.Jobs = jobs
 
-	stats.Processed, _ = Config.Redis.Get(context.Background(), Config.Namespace+"stat:processed").Int()
-	stats.Failed, _ = Config.Redis.Get(context.Background(), Config.Namespace+"stat:failed").Int()
-	stats.Retries = Config.Redis.ZCard(context.Background(), Config.Namespace+RETRY_KEY).Val()
+	stats.Processed, _ = Config.Redis.Get(Config.Namespace + "stat:processed").Int()
+	stats.Failed, _ = Config.Redis.Get(Config.Namespace + "stat:failed").Int()
+	stats.Retries = Config.Redis.ZCard(Config.Namespace + RETRY_KEY).Val()
 	for key := range enqueued {
-		enqueued[key] = Config.Redis.LLen(context.Background(), fmt.Sprintf("%squeue:%s", Config.Namespace, key)).String()
+		enqueued[key] = Config.Redis.LLen(fmt.Sprintf("%squeue:%s", Config.Namespace, key)).String()
 	}
 	stats.Enqueued = enqueued
 

@@ -1,8 +1,6 @@
 package workers
 
 import (
-	"context"
-
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
 )
@@ -30,14 +28,14 @@ func FetchSpec(c gospec.Context) {
 			fetch := buildFetch("fetchQueue2")
 			c.Expect(fetch.Queue(), Equals, "{worker}:queue:fetchQueue2")
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:fetchQueue2", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:fetchQueue2", message.ToJson())
 
 			fetch.Ready() <- true
 			message := <-fetch.Messages()
 
 			c.Expect(message, Equals, message)
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:fetchQueue2").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:fetchQueue2").Result()
 			c.Expect(len, Equals, int64(0))
 
 			fetch.Close()
@@ -46,15 +44,15 @@ func FetchSpec(c gospec.Context) {
 		c.Specify("places in progress messages on private queue", func() {
 			fetch := buildFetch("fetchQueue3")
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:fetchQueue3", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:fetchQueue3", message.ToJson())
 
 			fetch.Ready() <- true
 			<-fetch.Messages()
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:fetchQueue3:1:inprogress").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:fetchQueue3:1:inprogress").Result()
 			c.Expect(len, Equals, int64(1))
 
-			messages, _ := Config.Redis.LRange(context.Background(), "{worker}:queue:fetchQueue3:1:inprogress", 0, -1).Result()
+			messages, _ := Config.Redis.LRange("{worker}:queue:fetchQueue3:1:inprogress", 0, -1).Result()
 			c.Expect(messages[0], Equals, message.ToJson())
 
 			fetch.Close()
@@ -63,14 +61,14 @@ func FetchSpec(c gospec.Context) {
 		c.Specify("removes in progress message when acknowledged", func() {
 			fetch := buildFetch("fetchQueue4")
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:fetchQueue4", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:fetchQueue4", message.ToJson())
 
 			fetch.Ready() <- true
 			<-fetch.Messages()
 
 			fetch.Acknowledge(message)
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:fetchQueue4:1:inprogress").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:fetchQueue4:1:inprogress").Result()
 			c.Expect(len, Equals, int64(0))
 
 			fetch.Close()
@@ -84,14 +82,14 @@ func FetchSpec(c gospec.Context) {
 
 			fetch := buildFetch("fetchQueue5")
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:fetchQueue5", json)
+			Config.Redis.LPush("{worker}:queue:fetchQueue5", json)
 
 			fetch.Ready() <- true
 			<-fetch.Messages()
 
 			fetch.Acknowledge(message)
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:fetchQueue5:1:inprogress").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:fetchQueue5:1:inprogress").Result()
 			c.Expect(len, Equals, int64(0))
 
 			fetch.Close()
@@ -101,9 +99,9 @@ func FetchSpec(c gospec.Context) {
 			message2, _ := NewMsg("{\"foo\":\"bar2\"}")
 			message3, _ := NewMsg("{\"foo\":\"bar3\"}")
 
-			Config.Redis.LPush(context.Background(), "{worker}:queue:fetchQueue6:1:inprogress", message.ToJson())
-			Config.Redis.LPush(context.Background(), "{worker}:queue:fetchQueue6:1:inprogress", message2.ToJson())
-			Config.Redis.LPush(context.Background(), "{worker}:queue:fetchQueue6", message3.ToJson())
+			Config.Redis.LPush("{worker}:queue:fetchQueue6:1:inprogress", message.ToJson())
+			Config.Redis.LPush("{worker}:queue:fetchQueue6:1:inprogress", message2.ToJson())
+			Config.Redis.LPush("{worker}:queue:fetchQueue6", message3.ToJson())
 
 			fetch := buildFetch("fetchQueue6")
 
@@ -118,7 +116,7 @@ func FetchSpec(c gospec.Context) {
 			fetch.Acknowledge(message2)
 			fetch.Acknowledge(message3)
 
-			len, _ := Config.Redis.LLen(context.Background(), "{worker}:queue:fetchQueue6:1:inprogress").Result()
+			len, _ := Config.Redis.LLen("{worker}:queue:fetchQueue6:1:inprogress").Result()
 			c.Expect(len, Equals, int64(0))
 
 			fetch.Close()

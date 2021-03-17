@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"testing"
 
 	"github.com/customerio/gospec"
@@ -27,10 +26,9 @@ func TestAllSpecs(t *testing.T) {
 			"pool":     "1",
 		})
 
-		Config.Redis.ForEachMaster(context.Background(),
-			func(ctx context.Context, client *redis.Client) error {
-				return client.FlushAll(ctx).Err()
-			})
+		Config.Redis.ForEachMaster(func(client *redis.Client) error {
+			return client.FlushAll().Err()
+		})
 	}
 
 	// List all specs here

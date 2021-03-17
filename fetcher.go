@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"fmt"
 	"time"
 )
@@ -79,7 +78,7 @@ func (f *fetch) Fetch() {
 }
 
 func (f *fetch) tryFetchMessage() {
-	message, err := Config.Redis.BRPopLPush(context.Background(), f.queue, f.inprogressQueue(), 1*time.Second).Result()
+	message, err := Config.Redis.BRPopLPush(f.queue, f.inprogressQueue(), 1*time.Second).Result()
 
 	if err != nil {
 		// If redis returns null, the queue is empty. Just ignore the error.
@@ -104,7 +103,7 @@ func (f *fetch) sendMessage(message string) {
 }
 
 func (f *fetch) Acknowledge(message *Msg) {
-	Config.Redis.LRem(context.Background(), f.inprogressQueue(), -1, message.OriginalJson())
+	Config.Redis.LRem(f.inprogressQueue(), -1, message.OriginalJson())
 }
 
 func (f *fetch) Messages() chan *Msg {
@@ -138,7 +137,7 @@ func (f *fetch) inprogressMessages() []string {
 	// defer conn.Close()
 
 	// messages, err := redis.Strings(conn.Do("lrange", f.inprogressQueue(), 0, -1))
-	messages, err := Config.Redis.LRange(context.Background(), f.inprogressQueue(), 0, -1).Result()
+	messages, err := Config.Redis.LRange(f.inprogressQueue(), 0, -1).Result()
 	if err != nil {
 		Logger.Println("ERR: ", err)
 	}

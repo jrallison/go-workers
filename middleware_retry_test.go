@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"context"
 	"time"
 
 	"github.com/customerio/gospec"
@@ -31,7 +30,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		retries, _ := Config.Redis.ZRange(context.Background(), "{worker}:"+RETRY_KEY, 0, 1).Result()
+		retries, _ := Config.Redis.ZRange("{worker}:"+RETRY_KEY, 0, 1).Result()
 		c.Expect(retries[0], Equals, message.ToJson())
 	})
 
@@ -42,7 +41,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		count, _ := Config.Redis.ZCard(context.Background(), "{worker}:"+RETRY_KEY).Result()
+		count, _ := Config.Redis.ZCard("{worker}:" + RETRY_KEY).Result()
 		c.Expect(count, Equals, int64(0))
 	})
 
@@ -53,7 +52,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		count, _ := Config.Redis.ZCard(context.Background(), "{worker}:"+RETRY_KEY).Result()
+		count, _ := Config.Redis.ZCard("{worker}:" + RETRY_KEY).Result()
 		c.Expect(count, Equals, int64(0))
 	})
 
@@ -64,7 +63,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		retries, _ := Config.Redis.ZRange(context.Background(), "{worker}:"+RETRY_KEY, 0, 1).Result()
+		retries, _ := Config.Redis.ZRange("{worker}:"+RETRY_KEY, 0, 1).Result()
 		c.Expect(retries[0], Equals, message.ToJson())
 	})
 
@@ -75,7 +74,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		retries, _ := Config.Redis.ZRange(context.Background(), "{worker}:"+RETRY_KEY, 0, 1).Result()
+		retries, _ := Config.Redis.ZRange("{worker}:"+RETRY_KEY, 0, 1).Result()
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -100,7 +99,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		retries, _ := Config.Redis.ZRange(context.Background(), "{worker}:"+RETRY_KEY, 0, 1).Result()
+		retries, _ := Config.Redis.ZRange("{worker}:"+RETRY_KEY, 0, 1).Result()
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -123,7 +122,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		retries, _ := Config.Redis.ZRange(context.Background(), "{worker}:"+RETRY_KEY, 0, 1).Result()
+		retries, _ := Config.Redis.ZRange("{worker}:"+RETRY_KEY, 0, 1).Result()
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -146,7 +145,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		count, _ := Config.Redis.ZCard(context.Background(), "{worker}:"+RETRY_KEY).Result()
+		count, _ := Config.Redis.ZCard("{worker}:" + RETRY_KEY).Result()
 		c.Expect(count, Equals, int64(0))
 	})
 
@@ -157,7 +156,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		count, _ := Config.Redis.ZCard(context.Background(), "{worker}:"+RETRY_KEY).Result()
+		count, _ := Config.Redis.ZCard("{worker}:" + RETRY_KEY).Result()
 		c.Expect(count, Equals, int64(0))
 	})
 
