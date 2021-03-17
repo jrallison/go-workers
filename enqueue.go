@@ -86,7 +86,7 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 }
 
 func enqueueAt(at float64, bytes []byte) error {
-	_, err := Config.Redis.ZAdd(Config.Namespace+SCHEDULED_JOBS_KEY, &redis.Z{
+	_, err := Config.Redis.ZAdd(Config.Namespace+SCHEDULED_JOBS_KEY, redis.Z{
 		Member: bytes,
 		Score:  at,
 	}).Result()

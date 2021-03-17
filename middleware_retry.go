@@ -30,11 +30,10 @@ func (r *MiddlewareRetry) Call(queue string, message *Msg, next func() bool) (ac
 					) * time.Second,
 				)
 
-				z := &redis.Z{
+				_, err := Config.Redis.ZAdd(Config.Namespace+RETRY_KEY, redis.Z{
 					Member: message.ToJson(),
 					Score:  nowToSecondsWithNanoPrecision() + waitDuration,
-				}
-				_, err := Config.Redis.ZAdd(Config.Namespace+RETRY_KEY, z).Result()
+				}).Result()
 
 				// If we can't add the job to the retry queue,
 				// then we shouldn't acknowledge the job, otherwise

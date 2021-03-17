@@ -40,7 +40,7 @@ func (s *scheduled) poll() {
 	for _, key := range s.keys {
 		key = Config.Namespace + key
 		for {
-			messages, _ := Config.Redis.ZRangeByScore(key, &redis.ZRangeBy{
+			messages, _ := Config.Redis.ZRangeByScore(key, redis.ZRangeBy{
 				Min:    "-inf",
 				Max:    strconv.FormatFloat(now, 'f', 0, 64),
 				Offset: 0,
