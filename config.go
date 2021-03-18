@@ -11,7 +11,7 @@ type config struct {
 	processId    string
 	Namespace    string
 	PollInterval int
-	Redis        *redis.ClusterClient
+	Redis        redis.UniversalClient
 	Fetch        func(queue string) Fetcher
 }
 
@@ -39,17 +39,17 @@ func Configure(options map[string]string) {
 		options["process"],
 		namespace,
 		pollInterval,
-		newRedisClient(options["server"]),
+		newRedisUniversalClient(options["server"]),
 		func(queue string) Fetcher {
 			return NewFetch(queue, make(chan *Msg), make(chan bool))
 		},
 	}
 }
 
-func newRedisClient(addr string) *redis.ClusterClient {
-	cfg := &redis.ClusterOptions{
+func newRedisUniversalClient(addr string) redis.UniversalClient {
+	client := redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs: strings.Split(addr, ","),
-	}
-	client := redis.NewClusterClient(cfg)
+		DB:    0,
+	})
 	return client
 }

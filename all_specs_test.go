@@ -1,10 +1,11 @@
 package workers
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/alicebob/miniredis"
 	"github.com/customerio/gospec"
-	"github.com/go-redis/redis"
 )
 
 // You will need to list every spec in a TestXxx method like this,
@@ -17,18 +18,25 @@ func TestAllSpecs(t *testing.T) {
 	r := gospec.NewRunner()
 
 	r.Parallel = false
+	redisNodes := 6
 
 	r.BeforeEach = func() {
+		mrs := []*miniredis.Miniredis{}
+		serverAddrs := []string{}
+		for i := 0; i < redisNodes; i++ {
+			mr, _ := miniredis.Run()
+			mrs = append(mrs, mr)
+			serverAddrs = append(serverAddrs, mr.Addr())
+		}
+
 		Configure(map[string]string{
-			"server":   "localhost:7001,localhost:7002,localhost:7003,localhost:7004,localhost:7005,localhost:7006",
-			"process":  "1",
-			"database": "0",
-			"pool":     "1",
+			"server":  strings.Join(serverAddrs[:], ","),
+			"process": "1",
 		})
 
-		Config.Redis.ForEachMaster(func(client *redis.Client) error {
-			return client.FlushAll().Err()
-		})
+		for i := 0; i < redisNodes; i++ {
+			mrs[i].FlushAll()
+		}
 	}
 
 	// List all specs here

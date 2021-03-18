@@ -12,8 +12,7 @@ func (l *MiddlewareLogging) Call(queue string, message *Msg, next func() bool) (
 	prefix := fmt.Sprint(queue, " JID-", message.Jid())
 
 	start := time.Now()
-	Logger.Println(prefix, "start")
-	Logger.Println(prefix, "args:", message.Args().ToJson())
+	Logger.Println(prefix, "start args:", message.Args().ToJson())
 
 	defer func() {
 		if e := recover(); e != nil {

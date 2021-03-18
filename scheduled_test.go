@@ -19,15 +19,15 @@ func ScheduledSpec(c gospec.Context) {
 		message2, _ := NewMsg("{\"queue\":\"myqueue\",\"foo\":\"bar2\"}")
 		message3, _ := NewMsg("{\"queue\":\"default\",\"foo\":\"bar3\"}")
 
-		Config.Redis.ZAdd("{worker}:"+RETRY_KEY, &redis.Z{
+		Config.Redis.ZAdd("{worker}:"+RETRY_KEY, redis.Z{
 			Member: message1.ToJson(),
 			Score:  now - 60.0,
 		})
-		Config.Redis.ZAdd("{worker}:"+RETRY_KEY, &redis.Z{
+		Config.Redis.ZAdd("{worker}:"+RETRY_KEY, redis.Z{
 			Member: message2.ToJson(),
 			Score:  now - 10.0,
 		})
-		Config.Redis.ZAdd("{worker}:"+RETRY_KEY, &redis.Z{
+		Config.Redis.ZAdd("{worker}:"+RETRY_KEY, redis.Z{
 			Member: message3.ToJson(),
 			Score:  now + 60.0,
 		})

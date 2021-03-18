@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -61,6 +62,13 @@ func (s *scheduled) poll() {
 			}
 		}
 	}
+}
+
+func (s *scheduled) interval() int {
+	min := 3
+	max := 7
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max-min+1) + min
 }
 
 func newScheduled(keys ...string) *scheduled {
