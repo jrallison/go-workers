@@ -55,8 +55,10 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 	conn.Send("get", Config.Namespace+"stat:failed")
 	conn.Send("zcard", Config.Namespace+RETRY_KEY)
 
-	for key, _ := range enqueued {
+	var keys []string
+	for key := range enqueued {
 		conn.Send("llen", fmt.Sprintf("%squeue:%s", Config.Namespace, key))
+		keys = append(keys, key)
 	}
 
 	r, err := conn.Do("exec")
@@ -83,9 +85,10 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 			}
 
 			queueIndex := 0
-			for key, _ := range enqueued {
+			for _, key := range keys {
 				if queueIndex == (index - 3) {
 					enqueued[key] = fmt.Sprintf("%d", result.(int64))
+					break
 				}
 				queueIndex++
 			}
